@@ -1,0 +1,20 @@
+# Python and local environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Local editor settings
+.vscode/settings.json
+
+# DTLD data and generated experiment artifacts
+/datasets/*
+/dinov3_global/runs/
+/output/
+
+# Model checkpoints and exported weights
+*.pt
+*.pth
+*.safetensors
+*.engine

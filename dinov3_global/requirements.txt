@@ -1,0 +1,9 @@
+# dinov3_global — frozen DINOv3 ViT-S + tiny transformer decoder, DTLD global task.
+# Target env: torch>=2.1 cuda, transformers>=4.56 (DINOv3 support), 12GB VRAM.
+torch>=2.1
+transformers>=4.56
+numpy
+Pillow
+PyYAML
+scikit-learn
+tqdm
