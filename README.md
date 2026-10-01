@@ -49,6 +49,10 @@ DTLD annotations are parsed within `dinov3_global/dinov3_global/dtld_native.py`.
 
 ## Experiments
 
+For the latest DTLD/OOD diagnosis, the experimental v5 configuration and the
+local ATLAS labeling/evaluation workflow, see
+[ROBUSTNESS_REVIEW.md](dinov3_global/ROBUSTNESS_REVIEW.md).
+
 ```sh
 python dinov3_global/tests/test_correctness.py
 python dinov3_global/scripts/train.py --config dinov3_global/configs/v4.yaml --out dinov3_global/runs/exp5

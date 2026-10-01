@@ -49,4 +49,5 @@ class DinoGlobal(nn.Module):
             cls_mid=(feats["cls_mid"].float() if feats.get("cls_mid") is not None
                      else None))
         return {"logits": logits, "attn": aux.get("attn"),
-                "maps": aux.get("maps"), "tokens": aux.get("tokens")}
+                "maps": aux.get("maps"), "tokens": aux.get("tokens"),
+                "branch_maps": aux.get("branch_maps")}

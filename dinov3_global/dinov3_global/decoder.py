@@ -250,6 +250,11 @@ class TokenMILHead(nn.Module):
                  grid_hw: Tuple[int, int] = PATCH_GRID,
                  dir_head: bool = False,
                  cls_modulates_evidence: bool = False,
+                 positional_mode: str = "all",
+                 scene_dropout: float = 0.0,
+                 scene_prior_bound: Optional[float] = None,
+                 nor_scene_bound: Optional[float] = None,
+                 relevance_context: bool = False,
                  **_ignored):
         super().__init__()
         self.pool = pool
@@ -257,10 +262,29 @@ class TokenMILHead(nn.Module):
         self.nor_sees_evidence = bool(nor_sees_evidence)
         self.dir_head = bool(dir_head)
         self.cls_modulates_evidence = bool(cls_modulates_evidence)
+        if positional_mode not in ("all", "relevance"):
+            raise ValueError("positional_mode must be all or relevance")
+        if not 0 <= scene_dropout < 1:
+            raise ValueError("scene_dropout must be in [0,1)")
+        if scene_prior_bound is not None and scene_prior_bound <= 0:
+            raise ValueError("scene_prior_bound must be positive")
+        if nor_scene_bound is not None and (nor_scene_bound <= 0 or not nor_sees_evidence):
+            raise ValueError("nor_scene_bound needs a positive bound and nor_sees_evidence")
+        self.positional_mode = positional_mode
+        self.scene_dropout = float(scene_dropout)
+        self.scene_prior_bound = scene_prior_bound
+        self.nor_scene_bound = nor_scene_bound
+        self.relevance_context = bool(relevance_context)
         self.proj = nn.Linear(in_dim, proj_dim)
         self.proj_norm = nn.LayerNorm(proj_dim)
         self.register_buffer("pos", build_2d_sincos(*self.grid_hw, proj_dim), persistent=False)
         self.register_buffer("geo", token_geo(*self.grid_hw), persistent=False)
+        if self.relevance_context:
+            # Bounded scene-conditioned feature gate connects lane context to
+            # relevance, rather than letting CLS directly invent lamp evidence.
+            self.rel_context = nn.Linear(proj_dim, proj_dim)
+            nn.init.zeros_(self.rel_context.weight)
+            nn.init.zeros_(self.rel_context.bias)
         if pool == "topk":
             ks = [max(1, int(k)) for k in (topk or (1, 2, 4))]
             self.branches = nn.ModuleList(
@@ -301,19 +325,25 @@ class TokenMILHead(nn.Module):
                 nn.Linear(proj_dim, 2),
             )
 
-    def _branch(self, br: MILBranch, h: torch.Tensor):
+    def _branch(self, br: MILBranch, h: torch.Tensor,
+                context: Optional[torch.Tensor] = None):
         """h: [B,N,D] -> pooled scores [B,2], per-token probs + raw logits."""
         B, N, _ = h.shape
         z = br.trunk(h)
         lamp_logit = br.lamp(z).squeeze(-1)                   # [B,N]
         state_logit = br.state(z)                             # [B,N,6]
         geo = self.geo.to(h.device).unsqueeze(0).expand(B, -1, -1)
+        rel_z = z
+        if self.relevance_context and context is not None:
+            rel_z = rel_z * (1 + 0.25 * self.rel_context(context).tanh().unsqueeze(1))
+        if self.positional_mode == "relevance":
+            rel_z = rel_z + self.pos.to(h.device).unsqueeze(0)
         if self.dir_head:
             dir_logit = br.dir(z)                             # [B,N,4]
-            rel_in = torch.cat([z, geo, torch.softmax(dir_logit, dim=-1)], dim=-1)
+            rel_in = torch.cat([rel_z, geo, torch.softmax(dir_logit, dim=-1)], dim=-1)
         else:
             dir_logit = None
-            rel_in = torch.cat([z, geo], dim=-1)
+            rel_in = torch.cat([rel_z, geo], dim=-1)
         rel_logit = br.rel(rel_in).squeeze(-1)
         lamp = torch.sigmoid(lamp_logit)
         state = torch.softmax(state_logit, dim=-1)
@@ -350,26 +380,41 @@ class TokenMILHead(nn.Module):
             cls = torch.cat([cls, cls_mid], dim=-1)
         B = patches.shape[0]
         h = self.proj_norm(self.proj(patches))
-        h = h + self.pos.to(h.device).unsqueeze(0)
+        if self.positional_mode == "all":
+            h = h + self.pos.to(h.device).unsqueeze(0)
         cm = self.proj_norm(self.proj(cls))
+        if self.training and self.scene_dropout > 0:
+            # Entire scene vector dropped per frame, shared by all context
+            # paths. No rescaling: zero means absence of scene context.
+            keep = torch.rand(B, 1, device=cm.device) >= self.scene_dropout
+            cm = cm * keep
 
         scores, maps_list = [], []
         for br in self.branches:
-            s, mp = self._branch(br, h)
+            s, mp = self._branch(br, h, cm)
             scores.append(s)
             maps_list.append(mp)
         s = torch.stack(scores).mean(0)                        # [B,2]
         if self.cls_modulates_evidence:
             mod = self.cls_mod(cm)                             # [B,2] scene prior
+            if self.scene_prior_bound is not None:
+                mod = float(self.scene_prior_bound) * mod.tanh()
         else:
             mod = torch.zeros_like(s)
         if self.nor_sees_evidence:
             nor_in = torch.cat([cm, s], dim=-1)
         else:
             nor_in = cm
+        nor_logit = self.nor_head(nor_in).squeeze(-1)
+        if self.nor_scene_bound is not None:
+            # Learn absence from lamp evidence; CLS adds only a bounded residual.
+            # On CARLA exp4's unbounded CLS head drove 245/309 NoR predictions.
+            base_in = torch.cat([torch.zeros_like(cm), s], dim=-1)
+            base = self.nor_head(base_in).squeeze(-1)
+            nor_logit = base + float(self.nor_scene_bound) * (nor_logit - base).tanh()
         logits = torch.stack([s[:, 0] * self.scale[0] + self.bias[0] + mod[:, 0],
                               s[:, 1] * self.scale[1] + self.bias[1] + mod[:, 1],
-                              self.nor_head(nor_in).squeeze(-1)], dim=1)
+                              nor_logit], dim=1)
 
         # averaged maps for inspection/aux supervision
         maps: Dict[str, torch.Tensor] = {}
@@ -377,7 +422,8 @@ class TokenMILHead(nn.Module):
             maps[k] = torch.stack([m[k] for m in maps_list]).mean(0)
         maps["lamp_grid"] = maps["lamp"].reshape(B, *self.grid_hw)
         maps["rel_grid"] = maps["rel"].reshape(B, *self.grid_hw)
-        return logits, {"attn": maps["rr"].detach(), "maps": maps, "tokens": h}
+        return logits, {"attn": maps["rr"].detach(), "maps": maps, "tokens": h,
+                        "branch_maps": maps_list}
 
 
 def build_decoder(head: str = "mil", **kw) -> nn.Module:

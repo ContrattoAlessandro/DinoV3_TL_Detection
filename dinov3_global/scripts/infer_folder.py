@@ -76,16 +76,18 @@ def main():
     print(f"{len(files)} images from {args.images} (calibration T={T:.3f})")
 
     rows = []
+    target_hw = tuple(cfg.get("data", {}).get("target_hw", (720, 1280)))
     with torch.no_grad(), torch.autocast("cuda", enabled=dev.type == "cuda"):
         for p in files:
-            x, vis = preprocess(p, args.crop_sides)
+            x, vis = preprocess(p, args.crop_sides, target_hw)
             out_m = model(x.unsqueeze(0).to(dev).float().div_(255.0))
-            lg = out_m["logits"].float().cpu().numpy()[0] / T
+            raw_lg = out_m["logits"].float().cpu().numpy()[0]
+            lg = raw_lg / T
             e = np.exp(lg - lg.max())
             prob = e / e.sum()
             pred = int(prob.argmax())
             rows.append([os.path.relpath(p, args.images), *[f"{v:.4f}" for v in prob],
-                         NAMES[pred]])
+                         NAMES[pred], *[f"{v:.8f}" for v in raw_lg]])
             if args.overlays:
                 maps = out_m.get("maps")
                 stem = os.path.splitext(os.path.basename(p))[0]
@@ -104,7 +106,8 @@ def main():
     csv_path = os.path.join(out, "predictions.csv")
     with open(csv_path, "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["file", "P_RR", "P_RG", "P_NoR", "pred"])
+        w.writerow(["file", "P_RR", "P_RG", "P_NoR", "pred",
+                    "logit_RR", "logit_RG", "logit_NoR"])
         w.writerows(rows)
     counts = {n: sum(1 for r in rows if r[-1] == n) for n in NAMES}
     print(f"predictions -> {csv_path}  counts={counts}")

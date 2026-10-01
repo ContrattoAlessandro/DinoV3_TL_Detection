@@ -1,5 +1,19 @@
 # dinov3_global v2 — DinoGlobal-MIL: frozen DINOv3 + token-level MIL head
 
+**Latest robustness iteration:** [ROBUSTNESS_REVIEW.md](ROBUSTNESS_REVIEW.md)
+documents the measured CARLA scene-context failure, corrected augmentation,
+experimental `configs/v5.yaml`, controlled `configs/v4_safe.yaml` baseline, and
+`scripts/label_atlas.py` / `scripts/evaluate_ood.py` for reusable manual labels.
+V5 has passed smoke verification; full-training accuracy is not yet measured.
+
+[EXPERIMENT_STATUS.md](EXPERIMENT_STATUS.md) contains the reviewed ATLAS labels,
+fresh exp2/exp3/exp4 results, paper-protocol differences and the running paired
+city comparison. `scripts/compare_city.py` queues both variants on the same
+checked folds with a matched schedule and resumable progress.
+
+[THROUGHPUT_REPORT.md](THROUGHPUT_REPORT.md) documents the measured loader
+speedup and the checks preserving sampling, random states and GPU updates.
+
 > **Start here for the next iteration:** [`CONTEXT_v3.md`](CONTEXT_v3.md) (measured
 > exp2 diagnosis + v3 plan) and [`AUDIT_v3.md`](AUDIT_v3.md) (**code audit: two
 > token-supervision bugs found & fixed, 18-test correctness suite, the exp3

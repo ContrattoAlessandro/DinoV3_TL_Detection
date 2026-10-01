@@ -66,9 +66,9 @@ def degradations(x: torch.Tensor, strength: float = 1.0) -> torch.Tensor:
 def random_framing(x: torch.Tensor, min_scale: float = 0.85) -> torch.Tensor:
     """Mild random scale+shift crop (camera framing variation) then resize back.
 
-    Label-preserving for our global task: the image-level RR/RG/NoR label does
-    not change under cropping (worst case a lamp leaves frame while its class
-    evidence was already optional; kept mild for exactly that reason)."""
+    NOT label-preserving for existential RR/RG labels: cropping can remove the
+    only relevant signal. Legacy ablation only; do not use for consistency
+    without transforming boxes and recomputing the global label."""
     if random.random() >= 0.3:
         return x
     B, _, H, W = x.shape
@@ -147,7 +147,11 @@ def apply_lamp_erasure(x: torch.Tensor, lamp_grid: torch.Tensor,
     return x, y, w, lamp_tgt, valid, rel_tgt
 
 
-def train_view(x: torch.Tensor, strength: float = 1.0, crop: bool = True) -> torch.Tensor:
+def train_view(x: torch.Tensor, strength: float = 1.0, crop: bool = False,
+               photometric_enabled: bool = True,
+               degradations_enabled: bool = True,
+               per_image: bool = True, clean_prob: float = 0.0,
+               blend_min: float = 0.0) -> torch.Tensor:
     """One augmented training view: framing -> photometric -> degradations.
 
     ``crop=False`` skips ``random_framing``. REQUIRED for the view that carries
@@ -156,8 +160,26 @@ def train_view(x: torch.Tensor, strength: float = 1.0, crop: bool = True) -> tor
     wrong tokens (measured on exp2: top-1 lamp token inside a GT box 0.780 on
     clean input vs 0.005 after one framing crop, applied with p=0.3).
     """
+    if strength < 0 or not 0 <= clean_prob <= 1 or not 0 <= blend_min <= 1:
+        raise ValueError("invalid augmentation strength/probability/blend")
+    # Independent camera draws per image; retain some original pixels so tiny
+    # signal colours are not erased by a long chain of degradations. Inspired
+    # by AugMix, not a reproduction of its three-view objective.
+    if per_image and x.shape[0] > 1:
+        return torch.cat([train_view(im.unsqueeze(0), strength, crop,
+                                     photometric_enabled, degradations_enabled,
+                                     False, clean_prob, blend_min) for im in x])
+    if strength == 0 or random.random() < clean_prob:
+        return x.clone()
+    original = x
+    x = x.clone()
     if crop:
         x = random_framing(x)
-    x = photometric(x, strength)
-    x = degradations(x, strength)
-    return x.clamp_(0.0, 1.0)
+    if photometric_enabled:
+        x = photometric(x, strength)
+    if degradations_enabled:
+        x = degradations(x, strength)
+    if blend_min > 0:
+        keep = random.uniform(blend_min, 1.0)
+        x = keep * original + (1 - keep) * x
+    return x.clamp(0.0, 1.0)

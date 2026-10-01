@@ -2,9 +2,10 @@
 
 - ``global_loss``: label-smoothed CE with LOGIT ADJUSTMENT (Menon et al.,
   ICLR 2021): training adds ``tau_la * log(pi_c)`` to the logits. This is
-  Fisher-consistent for the *balanced* error - exactly the ``acc_bal`` metric
-  and the per-class AP we optimise - and replaces the naive 1/freq class
-  weights of exp1 (which are not consistent for balanced error).
+  motivated by balanced-error consistency when the training prior and
+  adjustment satisfy that paper's assumptions. AP is a ranking metric: this
+  does not guarantee optimal mAP, especially with sampling/erasure changing
+  the effective prior. Replaces exp1's naive 1/freq class weights.
   Optional per-sample ``weight`` implements the label-policy knob for frames
   whose only relevant lamps are off/unknown (pseudo-NoR).
 - ``token_losses``: auxiliary supervision from DTLD lamp boxes (training-only;
@@ -67,7 +68,8 @@ def token_losses(maps: Dict[str, torch.Tensor],
                  rel_focal_gamma: float = 0.0,
                  w_dir: float = 0.0, dir_tgt: Optional[torch.Tensor] = None,
                  state_weights: Optional[torch.Tensor] = None,
-                 state_rel_boost: float = 0.0
+                 state_rel_boost: float = 0.0,
+                 rel_lamp_weight: Optional[float] = None
                  ) -> Dict[str, torch.Tensor]:
     """maps: lamp_logit [B,N], rel_logit [B,N], state_logit [B,N,6],
     optionally dir_logit [B,N,4]. Targets on the patch grid: lamp_tgt/rel_tgt
@@ -131,8 +133,22 @@ def token_losses(maps: Dict[str, torch.Tensor],
     # background is an explicit negative). v2 supervised lamp tokens only. -----
     if v.any() and w_rel > 0:
         rpw = torch.tensor(rel_pos_weight, device=rel_logit.device)
-        l_rel = _bce(rel_logit[v], rel_y[v], pos_weight=rpw,
-                     focal_gamma=rel_focal_gamma)
+        if rel_lamp_weight is None:
+            l_rel = _bce(rel_logit[v], rel_y[v], pos_weight=rpw,
+                         focal_gamma=rel_focal_gamma)
+        else:
+            if not 0 <= rel_lamp_weight <= 1:
+                raise ValueError("rel_lamp_weight must be in [0,1]")
+            # Separate actual lamps (including lit, irrelevant hard negatives)
+            # from background. Loss mass no longer shrinks with resolution.
+            bg = v & ~pos
+            lamp_loss = (_bce(rel_logit[pos], rel_y[pos], pos_weight=rpw,
+                              focal_gamma=rel_focal_gamma) if pos.any() else zero)
+            bg_loss = (_bce(rel_logit[bg], rel_y[bg],
+                            focal_gamma=rel_focal_gamma) if bg.any() else zero)
+            a = float(rel_lamp_weight) if pos.any() else 0.0
+            b = 1 - float(rel_lamp_weight) if bg.any() else 0.0
+            l_rel = (a * lamp_loss + b * bg_loss) / max(a + b, 1e-8)
     else:
         l_rel = zero
     # --- direction aux (lamp tokens only; -1 = no lamp) ---------------------

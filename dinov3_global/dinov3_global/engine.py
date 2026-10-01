@@ -40,6 +40,24 @@ def set_seed(seed: int):
     torch.cuda.manual_seed_all(seed)
 
 
+def capture_rng_state():
+    """Keep epoch-boundary resumes on the same sampling/augmentation stream."""
+    ns = np.random.get_state()
+    return {"python": random.getstate(),
+            "numpy": [ns[0], ns[1].tolist(), ns[2], ns[3], ns[4]],
+            "torch": torch.get_rng_state(),
+            "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else []}
+
+
+def restore_rng_state(state):
+    random.setstate(state["python"])
+    ns = state["numpy"]
+    np.random.set_state((ns[0], np.array(ns[1], dtype=np.uint32), *ns[2:]))
+    torch.set_rng_state(state["torch"].cpu())
+    if state["cuda"] and torch.cuda.is_available():
+        torch.cuda.set_rng_state_all([s.cpu() for s in state["cuda"]])
+
+
 def _loader_args(cfg: dict):
     nw = int(cfg.get("loader", {}).get("num_workers", 0))
     bs = int(cfg["optim"].get("batch", 2))
@@ -68,7 +86,12 @@ def _build_model(cfg: dict, dev: torch.device, repo_root: str = ".") -> DinoGlob
                   topk=tuple(d.get("topk", [1, 2, 4])),
                   nor_sees_evidence=bool(d.get("nor_sees_evidence", False)),
                   dir_head=bool(d.get("dir_head", False)),
-                  cls_modulates_evidence=bool(d.get("cls_modulates_evidence", False)))
+                  cls_modulates_evidence=bool(d.get("cls_modulates_evidence", False)),
+                  positional_mode=d.get("positional_mode", "all"),
+                  scene_dropout=float(d.get("scene_dropout", 0.0)),
+                  scene_prior_bound=d.get("scene_prior_bound"),
+                  nor_scene_bound=d.get("nor_scene_bound"),
+                  relevance_context=bool(d.get("relevance_context", False)))
     return DinoGlobal(hf_id=m.get("hf_id", "facebook/dinov3-vits16plus-pretrain-lvd1689m"),
                       attn_implementation=m.get("attn_implementation", "sdpa"),
                       dtype=m.get("dtype", "float16") if dev.type == "cuda" else "float32",
@@ -247,6 +270,9 @@ def train(cfg: dict, out_dir: str, repo_root: str = ".",
           max_train: Optional[int] = None, max_val: Optional[int] = None,
           resume: Optional[str] = None):
     os.makedirs(out_dir, exist_ok=True)
+    if not resume and any(os.path.exists(os.path.join(out_dir, name))
+                          for name in ("best.pt", "last.pt", "history.jsonl")):
+        raise ValueError("Run directory already contains training artifacts; use --resume or a new --out")
     set_seed(int(cfg["optim"].get("seed", 0)))
     dev = torch.device(device)
     tl, vl, tr_ds, va_ds, info = build_loaders(cfg, repo_root)
@@ -268,23 +294,33 @@ def train(cfg: dict, out_dir: str, repo_root: str = ".",
     start_ep = 0
     opt_state = scaler_state = ema_state = None
     best_init = -1.0
+    stale_init = 0
     if resume:
         sd = torch.load(resume, map_location=dev)
         model.decoder.load_state_dict(sd["head"])
         ema_state = sd.get("ema")
         opt_state, scaler_state = sd.get("opt"), sd.get("scaler")
         start_ep = int(sd.get("epoch", 0))
-        best_init = float(sd.get("metrics", {}).get("mAP", -1.0))
+        best_init = float(sd.get("best_score", sd.get("metrics", {}).get("mAP", -1.0)))
+        stale_init = int(sd.get("stale_epochs", 0))
+        # Resuming with a changed architecture/data/loss is a new experiment,
+        # not a continuation. Avoid silently mixing incompatible histories.
+        for section in ("backbone", "decoder", "data", "loss", "augment"):
+            if sd["cfg"].get(section, {}) != cfg.get(section, {}):
+                raise ValueError(f"resume config differs in {section}; use a new run")
         print(f"resumed from {resume} at epoch {start_ep} (best so far mAP={best_init:.4f})")
     return fit(cfg, model, tl, vl, out_dir, dev, log_pi, start_ep=start_ep,
                opt_state=opt_state, scaler_state=scaler_state, ema_state=ema_state,
-               best_init=best_init, pseudo_flags=_pseudo_flags(va_ds))
+               best_init=best_init, stale_init=stale_init,
+               pseudo_flags=_pseudo_flags(va_ds),
+               rng_state=sd.get("rng_state") if resume else None)
 
 
 def fit(cfg: dict, model: DinoGlobal, tl, vl, out_dir: str,
         dev: torch.device, log_pi: torch.Tensor, start_ep: int = 0,
         opt_state=None, scaler_state=None, ema_state=None,
-        best_init: float = -1.0, pseudo_flags=None):
+        best_init: float = -1.0, pseudo_flags=None, stale_init: int = 0,
+        rng_state=None):
     """Training loop (shared by train() and scripts/crossval_city.py)."""
     os.makedirs(out_dir, exist_ok=True)
     o = cfg["optim"]
@@ -319,7 +355,17 @@ def fit(cfg: dict, model: DinoGlobal, tl, vl, out_dir: str,
     state_w = state_balance_weights(tl, lcfg.get("state_balance", "none"))
     if state_w is not None:
         state_w = state_w.to(dev)
-    p_erase = float(cfg.get("augment", {}).get("p_erase", 0.0))
+    acfg = cfg.get("augment", {})
+    p_erase = float(acfg.get("p_erase", 0.0))
+    view_kw = dict(strength=float(acfg.get("strength", 1.0)), crop=False,
+                   photometric_enabled=bool(acfg.get("photometric", True)),
+                   degradations_enabled=bool(acfg.get("blur", True)),
+                   per_image=bool(acfg.get("per_image", True)),
+                   clean_prob=float(acfg.get("clean_prob", 0.0)),
+                   blend_min=float(acfg.get("blend_min", 0.0)))
+    branch_supervision = bool(lcfg.get("per_branch_supervision", False))
+    supervise_view2 = bool(lcfg.get("supervise_view2", False))
+    consist_warmup = int(lcfg.get("consist_warmup_epochs", 0))
     use_token = cfg.get("decoder", {}).get("head", "mil") == "mil"
 
     def _lr(ep: int) -> float:
@@ -336,10 +382,16 @@ def fit(cfg: dict, model: DinoGlobal, tl, vl, out_dir: str,
                 pe.mul_(ema_decay).add_(pm, alpha=1 - ema_decay)
 
     patience = int(o.get("early_stop_patience", 0))  # 0 = disabled
-    stale = 0
+    stale = stale_init
     best_map, best_state = best_init, None
+    selection_metric = o.get("early_stop_metric", "mAP")
+    if selection_metric not in ("mAP", "worst_city_mAP", "acc_bal"):
+        raise ValueError(f"unsupported early_stop_metric {selection_metric!r}")
     if dev.type == "cuda":
         torch.backends.cudnn.benchmark = True
+
+    if rng_state is not None:
+        restore_rng_state(rng_state)
 
     for ep in range(start_ep, epochs):
         for g in opt.param_groups:
@@ -369,7 +421,7 @@ def fit(cfg: dict, model: DinoGlobal, tl, vl, out_dir: str,
             # view 1 carries the token-level aux losses, so it must NOT be
             # geometrically cropped: the token targets are rasterised on the
             # uncropped frame (measured: 0.780 -> 0.005 lamp-hit-rate when cropped).
-            x1 = train_view(x, crop=False)
+            x1 = train_view(x, **view_kw)
             with torch.autocast("cuda", enabled=use_amp):
                 out = model(x1)
                 g_loss = global_loss(out["logits"], y, log_pi, tau_la, smoothing, w)
@@ -379,7 +431,9 @@ def fit(cfg: dict, model: DinoGlobal, tl, vl, out_dir: str,
                     # note: lamp-erasure zeroes lamp/rel targets above, and the
                     # state/dir losses mask on lamp-positive tokens, so erased
                     # frames automatically lose their state/dir supervision.
-                    t_loss = token_losses(out["maps"],
+                    supervised_maps = (out.get("branch_maps") if branch_supervision else None)
+                    supervised_maps = supervised_maps or [out["maps"]]
+                    t_loss = torch.stack([token_losses(mp,
                                           lamp_t, valid_t, state_t, rel_t,
                                           w_lamp, w_state, w_rel,
                                           float(lcfg.get("lamp_pos_weight", 10.0)),
@@ -387,15 +441,24 @@ def fit(cfg: dict, model: DinoGlobal, tl, vl, out_dir: str,
                                           rel_focal_gamma=rel_gamma,
                                           w_dir=w_dir, dir_tgt=dir_t,
                                           state_weights=state_w,
-                                          state_rel_boost=state_boost)["total"]
+                                          state_rel_boost=state_boost,
+                                          rel_lamp_weight=lcfg.get("rel_lamp_weight"))["total"]
+                                          for mp in supervised_maps]).mean()
                     loss = loss + t_loss
                 c_loss = torch.zeros((), device=dev)
-                if w_consist > 0:
-                    # view 2 has no token loss -> free to include the framing crop
-                    x2 = train_view(x)
+                if w_consist > 0 or supervise_view2:
+                    # Both views retain the full frame: a crop can remove the
+                    # only relevant lamp and invalidate an existential label.
+                    x2 = train_view(x, **view_kw)
                     out2 = model(x2)
-                    c_loss = consistency_kl(out["logits"], out2["logits"])
-                    loss = loss + w_consist * c_loss
+                    if supervise_view2:
+                        g2 = global_loss(out2["logits"], y, log_pi, tau_la, smoothing, w)
+                        loss = loss - g_loss + (g_loss + g2) * 0.5
+                        g_loss = (g_loss + g2) * 0.5
+                    if w_consist > 0:
+                        c_loss = consistency_kl(out["logits"], out2["logits"])
+                        ramp = min(1.0, (ep + 1) / max(consist_warmup, 1))
+                        loss = loss + w_consist * ramp * c_loss
                 # average over the accumulation window; the leftover window at
                 # epoch end must divide by its ACTUAL size (dividing a partial
                 # window by `accum` under-weighted its gradient).
@@ -470,20 +533,27 @@ def fit(cfg: dict, model: DinoGlobal, tl, vl, out_dir: str,
         met["temperature"] = T                     # divide logits by T for calibrated probs
         met["ece_calibrated"] = rep_cal["metrics"]["ece"]
 
+        score = worst_city if selection_metric == "worst_city_mAP" else met[selection_metric]
+        if not math.isfinite(score):
+            raise ValueError(f"selection metric {selection_metric} is undefined on validation")
+        improved = score > best_map
+        if improved:
+            best_map = score
+            stale = 0
+        else:
+            stale += 1
         state = {"head": copy.deepcopy(model.decoder.state_dict()),
                  "ema": copy.deepcopy(ema.state_dict()), "cfg": cfg,
                  "epoch": ep + 1, "metrics": met, "report": rep,
                  "report_calibrated": rep_cal,
-                 "log_pi": log_pi.tolist()}
-        if met["mAP"] > best_map:
-            best_map = met["mAP"]
+                 "log_pi": log_pi.tolist(), "best_score": best_map,
+                 "selection_metric": selection_metric, "stale_epochs": stale}
+        if improved:
             best_state = state
-            stale = 0
             torch.save(state, os.path.join(out_dir, "best.pt"))
-        else:
-            stale += 1
         last = dict(state)
-        last.update({"opt": opt.state_dict(), "scaler": scaler.state_dict()})
+        last.update({"opt": opt.state_dict(), "scaler": scaler.state_dict(),
+                     "rng_state": capture_rng_state()})
         torch.save(last, os.path.join(out_dir, "last.pt"))
         with open(os.path.join(out_dir, "history.jsonl"), "a") as f:
             f.write(json.dumps(to_jsonable(
@@ -491,7 +561,7 @@ def fit(cfg: dict, model: DinoGlobal, tl, vl, out_dir: str,
                                      if isinstance(v, (int, float))},
                  "worst_city_mAP": worst_city})) + "\n")
         if patience and stale >= patience:
-            print(f"early stop: val mAP flat for {stale} epochs "
+            print(f"early stop: val {selection_metric} flat for {stale} epochs "
                   f"(patience {patience}); best {best_map:.4f}")
             # marker so the auto-resume watchdog does not relaunch past a
             # deliberate early stop (it only counts history lines otherwise)
@@ -499,6 +569,6 @@ def fit(cfg: dict, model: DinoGlobal, tl, vl, out_dir: str,
                 f.write(f"epoch {ep+1} stale {stale} best {best_map:.4f}\n")
             break
 
-    print(f"best val mAP={best_map:.4f} (test untouched; run scripts/evaluate.py "
+    print(f"best val {selection_metric}={best_map:.4f} (test untouched; run scripts/evaluate.py "
           f"once for the unbiased report)")
     return best_state
