@@ -1,0 +1,10 @@
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.npz binary
+*.pt binary
+*.safetensors binary
+
+# Keep the pre-inference protocol byte-identical to its recorded SHA-256.
+docs/results/dtld_test_protocol.json -text

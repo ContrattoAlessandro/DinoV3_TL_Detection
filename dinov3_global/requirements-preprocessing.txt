@@ -1,3 +1,0 @@
-# Extra dependency for the raw DTLD TIFF-to-JPEG conversion tools.
--r requirements.txt
-opencv-python

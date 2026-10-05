@@ -10,8 +10,15 @@ venv/
 
 # DTLD data and generated experiment artifacts
 /datasets/*
-/dinov3_global/runs/
+/runs/
 /output/
+build/
+dist/
+*.egg-info/
+.ruff_cache/
+.env
+.env.*
+!.env.example
 
 # Model checkpoints and exported weights
 *.pt

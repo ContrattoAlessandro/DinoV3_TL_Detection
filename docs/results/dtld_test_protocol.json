@@ -1,0 +1,183 @@
+{
+  "schema_version": 1,
+  "frozen_at_utc": "2026-10-05T13:42:03.555088+00:00",
+  "architecture": "v5",
+  "split": "DTLD v2.0 official test",
+  "checkpoints": [
+    {
+      "name": "member0",
+      "checkpoint": "runs/v5/city_cv/fold0/best.pt",
+      "checkpoint_sha256": "4805517417e88cd437cf2e1e3dc7c72b76ce18630b794369b0514cbe6844fb87",
+      "epoch": 8,
+      "seed": 0,
+      "weights": "EMA"
+    },
+    {
+      "name": "member1",
+      "checkpoint": "runs/v5/city_cv/fold1/best.pt",
+      "checkpoint_sha256": "58cfbd19b72709a84744fad3330ae405a22ac87967a604430264b5396785f976",
+      "epoch": 2,
+      "seed": 1,
+      "weights": "EMA"
+    },
+    {
+      "name": "member2",
+      "checkpoint": "runs/v5/city_cv/fold2/best.pt",
+      "checkpoint_sha256": "2cc0e030bc3e8a2099762dfd31f9a9e8052d754610f1e1e5dd8ec1db49717acc",
+      "epoch": 8,
+      "seed": 2,
+      "weights": "EMA"
+    },
+    {
+      "name": "member3",
+      "checkpoint": "runs/v5/city_cv/fold3/best.pt",
+      "checkpoint_sha256": "e8c9196202085ef751b0416442f6ce908dc3830c9f93ef7c69e119c1c3fc0f87",
+      "epoch": 11,
+      "seed": 3,
+      "weights": "EMA"
+    }
+  ],
+  "predictor": "mean raw logits, then softmax",
+  "primary_temperature": 1.0,
+  "checkpoint_selection": "Highest city-validation EMA mAP at T=1; fixed before test inference",
+  "test_fitting": false,
+  "calibration": "None for primary metrics; no test-fitted temperature or thresholds",
+  "backbone": {
+    "hf_id": "facebook/dinov3-vits16plus-pretrain-lvd1689m",
+    "revision": "c93d816fc9e567563bc068f01475bec89cc634a6"
+  },
+  "data": {
+    "label_dir": "datasets/DTLD/v2.0",
+    "img_root": "datasets/DTLD_1280",
+    "crop_sides": 0,
+    "label_crop_sides": 114,
+    "target_hw": [
+      720,
+      1280
+    ],
+    "global_classes": [
+      "RR",
+      "RG",
+      "NoR"
+    ],
+    "val_frac": 0.15,
+    "val_seed": 0,
+    "label_policy": "map_to_nor",
+    "policy_weight": 1.0,
+    "sampler": "pow075"
+  },
+  "runtime_loader": {
+    "num_workers": 2,
+    "pin_memory": true,
+    "prefetch_factor": 4,
+    "persistent_workers": false,
+    "cpu_threads": 1
+  },
+  "batch_size": 4,
+  "precision": "CUDA float16 autocast",
+  "device": "cuda",
+  "gpu": "NVIDIA GeForce RTX 5070",
+  "environment": {
+    "python": "3.12.5",
+    "platform": "Windows",
+    "packages": {
+      "torch": "2.11.0+cu130",
+      "transformers": "5.6.2",
+      "huggingface-hub": "1.11.0",
+      "numpy": "2.5.0",
+      "Pillow": "12.0.0",
+      "PyYAML": "6.0.3",
+      "scikit-learn": "1.8.0",
+      "tqdm": "4.66.3"
+    },
+    "cuda_runtime": "13.0"
+  },
+  "source_sha256": {
+    "scripts/evaluate.py": "a097bd65a9d2bd1969cbcdeba1f4972fcc6759b10545321b6f5a8a462c1e8e8b",
+    "src/dinov3_global/evaluation.py": "28801b887cc179228482fb1e9c619228dd1d53ff566c7d8980bb6046692edf4b",
+    "src/dinov3_global/model.py": "ff9733cec2ea50155dcdee96b843125413a2a5a3386e41197fcbab12cb1837d6",
+    "src/dinov3_global/head.py": "d0e3bbdf6368c2eb1c95000c1b513e3662a0f2a2c10ac5d4df7be5f303d983c0",
+    "src/dinov3_global/backbone.py": "3af166df5f6cf2854f0f2e214d3c48404c1316dd60022c0462ed7942dcae2d26",
+    "src/dinov3_global/data.py": "58ac28fcfd6d4e3496bc9e91b80c66b2d10ff5a6be8342e614a288b345ce495e",
+    "src/dinov3_global/dtld.py": "5ca0972c3f20a81c5baf5535fdd0d9d3cf470bf159e790434c9f708ff158a098",
+    "src/dinov3_global/metrics.py": "52ed596054bcd339b248eba7243ea7c793fd1129ae20327b09ce6c6c2183d1ec",
+    "src/dinov3_global/runtime.py": "71e5bcfb6f17b889a424be75c44a3380b8c950497e77972295870669c404c250",
+    "src/dinov3_global/config.py": "9a72ed06e4b7bc44679173a50b6dbf05477cc82f2511ee83111c7fc0c8d5bae8",
+    "src/dinov3_global/engine.py": "70dd9485b070f833fbc208a67272b7637e0ce0bb21b63bc5f6b47b8b242e3bc3"
+  },
+  "data_audit": {
+    "splits": {
+      "train": {
+        "annotation": "datasets/DTLD/v2.0/DTLD_train.json",
+        "annotation_sha256": "959a67ec0d843886d286cd4c7e8513dc8435357d60726231d52c1ba9c873d9b5",
+        "n_native": 28525,
+        "n_evaluated": 28525,
+        "excluded_no_valid_lamp": 0,
+        "excluded_native_paths": [],
+        "class_counts": {
+          "RR": 9570,
+          "RG": 17583,
+          "NoR": 1372
+        },
+        "pseudo_nor": 453,
+        "n_sessions": 1478,
+        "city_counts": {
+          "Berlin": 2289,
+          "Bochum": 430,
+          "Bremen": 369,
+          "Dortmund": 4897,
+          "Duesseldorf": 3842,
+          "Essen": 2133,
+          "Frankfurt": 3186,
+          "Fulda": 536,
+          "Hannover": 4590,
+          "Kassel": 1599,
+          "Koeln": 4654
+        },
+        "membership_sha256": "4974d0587b2a0d37ef1381626385d8f37de8e3590fef75a09eab59b848eaf6ad"
+      },
+      "test": {
+        "annotation": "datasets/DTLD/v2.0/DTLD_test.json",
+        "annotation_sha256": "178d6719df8f665cf97f1522dd506aac1f33e1b26212c0910bee722582bc25a4",
+        "n_native": 12453,
+        "n_evaluated": 12453,
+        "excluded_no_valid_lamp": 0,
+        "excluded_native_paths": [],
+        "class_counts": {
+          "RR": 4359,
+          "RG": 7569,
+          "NoR": 525
+        },
+        "pseudo_nor": 213,
+        "n_sessions": 632,
+        "city_counts": {
+          "Berlin": 1077,
+          "Bochum": 109,
+          "Bremen": 222,
+          "Dortmund": 2027,
+          "Duesseldorf": 1389,
+          "Essen": 781,
+          "Frankfurt": 1677,
+          "Fulda": 108,
+          "Hannover": 2408,
+          "Kassel": 757,
+          "Koeln": 1898
+        },
+        "membership_sha256": "9cab054ae5d83e9925fa77649cbbfbf655ec1b2e7f518a62dbe050631982e541"
+      }
+    },
+    "overlap": {
+      "native_images": 0,
+      "basenames": 0,
+      "sessions": 0,
+      "exact_file_cross_split_pairs": 0,
+      "exact_file_cross_split_groups": [],
+      "exact_file_within_split_pairs": {
+        "train": 0,
+        "test": 0
+      },
+      "exact_file_conflicting_label_groups": 0
+    },
+    "image_hash_scope": "prepared JPEG bytes"
+  }
+}
