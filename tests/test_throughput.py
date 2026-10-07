@@ -65,7 +65,7 @@ def test_dtld_worker_batches_are_byte_identical(tmp_path):
     items = []
     for i in range(8):
         pixels = np.arange(32 * 48 * 3, dtype=np.uint8).reshape(32, 48, 3) + i
-        Image.fromarray(pixels).save(image_dir / f"frame{i}.jpg")
+        Image.fromarray(pixels).resize((2048, 1024)).save(image_dir / f"frame{i}.jpg")
         path = f"./City/route/drive/frame{i}.tiff"
         frame = FrameSample(
             path,
@@ -89,6 +89,7 @@ def test_dtld_worker_batches_are_byte_identical(tmp_path):
         )
     ds = DTLDGlobalDataset("unused", str(tmp_path), "train", items=items, target_hw=(32, 48), crop_sides=0)
     baseline = list(DataLoader(ds, batch_size=4, collate_fn=collate_global, num_workers=0))
+    assert {"content_mask", "geometry", "pictogram_tgt"}.issubset(baseline[0])
     parallel = list(DataLoader(ds, batch_size=4, collate_fn=collate_global, **loader_kwargs({}, settings())))
     for a, b in zip(baseline, parallel):
         assert a.keys() == b.keys()

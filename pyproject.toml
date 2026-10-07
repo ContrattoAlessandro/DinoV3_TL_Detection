@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dinoglobal-mil"
-version = "1.0.0"
-description = "Frozen DINOv3 and scene-conditioned MIL for traffic-light relevance classification"
+version = "2.0.0"
+description = "Frozen DINOv3 with shared attribute evidence and MIL for traffic-light relevance classification"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {file = "LICENSE"}

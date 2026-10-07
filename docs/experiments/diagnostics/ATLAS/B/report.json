@@ -1,0 +1,192 @@
+{
+  "metrics": {
+    "AP_RR": 0.9103484652822544,
+    "AP_RG": 0.7488912793475478,
+    "AP_NoR": 0.7849187054074196,
+    "mAP": 0.8147194833457405,
+    "acc_bal": 0.7827060051344166,
+    "n": 528,
+    "n_classes": 3,
+    "cm_RR_RR": 202,
+    "cm_RG_RG": 74,
+    "cm_NoR_NoR": 140,
+    "temperature": 1.0,
+    "ece": 0.09496813684437738,
+    "accuracy": 0.7878787878787878,
+    "macro_F1": 0.7715800192672514,
+    "weighted_F1": 0.7893446733969913,
+    "nll": 0.6283339481723723,
+    "brier": 0.3452748811538654
+  },
+  "per_class": {
+    "RR": {
+      "precision": 0.8523206751054853,
+      "recall": 0.8244897959183674,
+      "f1-score": 0.8381742738589212,
+      "support": 245.0
+    },
+    "RG": {
+      "precision": 0.6548672566371682,
+      "recall": 0.7789473684210526,
+      "f1-score": 0.7115384615384616,
+      "support": 95.0
+    },
+    "NoR": {
+      "precision": 0.7865168539325843,
+      "recall": 0.7446808510638298,
+      "f1-score": 0.7650273224043715,
+      "support": 188.0
+    },
+    "accuracy": 0.7878787878787878,
+    "macro avg": {
+      "precision": 0.7645682618917459,
+      "recall": 0.7827060051344166,
+      "f1-score": 0.7715800192672514,
+      "support": 528.0
+    },
+    "weighted avg": {
+      "precision": 0.7933638699255695,
+      "recall": 0.7878787878787878,
+      "f1-score": 0.7893446733969913,
+      "support": 528.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      202,
+      14,
+      29
+    ],
+    [
+      12,
+      74,
+      9
+    ],
+    [
+      23,
+      25,
+      140
+    ]
+  ],
+  "class_order": [
+    "RR",
+    "RG",
+    "NoR"
+  ],
+  "class_names": [
+    "RR",
+    "RG",
+    "NoR"
+  ],
+  "class_counts": {
+    "RR": 245,
+    "RG": 95,
+    "NoR": 188
+  },
+  "accuracy": 0.7878787878787878,
+  "excluded": {},
+  "per_camera": {
+    "front_medium": {
+      "AP_RR": 0.9241965887462162,
+      "AP_RG": 0.7610792635503,
+      "AP_NoR": 0.8168064287286176,
+      "mAP": 0.834027427008378,
+      "acc_bal": 0.8020725617173872,
+      "n": 393,
+      "n_classes": 3,
+      "cm_RR_RR": 157,
+      "cm_RG_RG": 55,
+      "cm_NoR_NoR": 106,
+      "temperature": 1.0,
+      "ece": 0.10862122705164015,
+      "accuracy": 0.8091603053435115,
+      "macro_F1": 0.7893226176808267,
+      "weighted_F1": 0.8107228307752404,
+      "nll": 0.5993724254060941,
+      "brier": 0.3257747067713335,
+      "class_counts": {
+        "RR": 182,
+        "RG": 69,
+        "NoR": 142
+      }
+    },
+    "front_tele": {
+      "AP_RR": 0.9043965699101312,
+      "AP_RG": 0.826179322471002,
+      "AP_NoR": 0.6665706401101785,
+      "mAP": 0.7990488441637705,
+      "acc_bal": 0.7413255360623782,
+      "n": 86,
+      "n_classes": 3,
+      "cm_RR_RR": 33,
+      "cm_RG_RG": 13,
+      "cm_NoR_NoR": 19,
+      "temperature": 1.0,
+      "ece": 0.12347315099941154,
+      "accuracy": 0.7558139534883721,
+      "macro_F1": 0.7448412698412699,
+      "weighted_F1": 0.7525747508305647,
+      "nll": 0.6974423851455518,
+      "brier": 0.38738258885172394,
+      "class_counts": {
+        "RR": 38,
+        "RG": 18,
+        "NoR": 30
+      }
+    },
+    "front_wide": {
+      "AP_RR": 0.9219194607758345,
+      "AP_RG": 0.5789418914418915,
+      "AP_NoR": 0.8448351519123578,
+      "mAP": 0.7818988347100279,
+      "acc_bal": 0.7225,
+      "n": 49,
+      "n_classes": 3,
+      "cm_RR_RR": 12,
+      "cm_RG_RG": 6,
+      "cm_NoR_NoR": 15,
+      "temperature": 1.0,
+      "ece": 0.15432769747097358,
+      "accuracy": 0.673469387755102,
+      "macro_F1": 0.6649550706033376,
+      "weighted_F1": 0.6642739252311964,
+      "nll": 0.7393248230183704,
+      "brier": 0.4277709152420122,
+      "class_counts": {
+        "RR": 25,
+        "RG": 8,
+        "NoR": 16
+      }
+    }
+  },
+  "limitations": [
+    "Small, potentially correlated sample; use as a diagnostic benchmark.",
+    "Do not train/tune on this set and call it unseen-data evaluation.",
+    "DTLD calibration is not guaranteed to transfer to OOD images."
+  ],
+  "checkpoint_sha256": "ffb74ecc1ff6bb32ff440430364ee3871ea9bc6f19dc180f5211314932aee729",
+  "epoch": 9,
+  "weights": "EMA",
+  "temperature": 1.0,
+  "checkpoint_selection": "highest fold-0 validation mAP; diagnostic checkpoint, failed eligibility",
+  "predictions_sha256": "4267ba0fbdc75a35e283a27ab64d21f723b171953a8323dc9b88590cfdd1531f",
+  "verification": {
+    "first_batch_images": 4,
+    "members": [
+      {
+        "member": 0,
+        "max_abs_logit_difference": 0.0
+      },
+      {
+        "member": 1,
+        "max_abs_logit_difference": 0.0
+      },
+      {
+        "member": 2,
+        "max_abs_logit_difference": 0.0
+      }
+    ],
+    "elapsed_seconds": 18.46899999998277
+  },
+  "completed_at": "2026-10-07T06:53:44.182285+00:00"
+}

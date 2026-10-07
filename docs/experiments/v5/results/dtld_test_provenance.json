@@ -1,0 +1,97 @@
+{
+  "protocol_sha256": "81c9f77b518d00e359a66fcb72dbbe2918d688b79eeb1adb6cc043b71a3c8666",
+  "completed_at_utc": "2026-10-05T13:46:55.765793+00:00",
+  "primary_predictor": "v5_ensemble4",
+  "aggregation": "Mean of four raw logit vectors, then one softmax at T=1",
+  "individual_model_summary": "Arithmetic mean of four individual checkpoint metrics",
+  "full_training_split_refit": false,
+  "encoder_reuse_verification": {
+    "first_batch_images": 4,
+    "members": [
+      {
+        "member": 0,
+        "max_abs_logit_difference": 0.0
+      },
+      {
+        "member": 1,
+        "max_abs_logit_difference": 0.0
+      },
+      {
+        "member": 2,
+        "max_abs_logit_difference": 0.0
+      },
+      {
+        "member": 3,
+        "max_abs_logit_difference": 0.0
+      }
+    ],
+    "elapsed_seconds": 279.9220000000205
+  },
+  "checkpoints": [
+    {
+      "name": "member0",
+      "checkpoint": "runs/v5/city_cv/fold0/best.pt",
+      "checkpoint_sha256": "4805517417e88cd437cf2e1e3dc7c72b76ce18630b794369b0514cbe6844fb87",
+      "epoch": 8,
+      "seed": 0,
+      "weights": "EMA"
+    },
+    {
+      "name": "member1",
+      "checkpoint": "runs/v5/city_cv/fold1/best.pt",
+      "checkpoint_sha256": "58cfbd19b72709a84744fad3330ae405a22ac87967a604430264b5396785f976",
+      "epoch": 2,
+      "seed": 1,
+      "weights": "EMA"
+    },
+    {
+      "name": "member2",
+      "checkpoint": "runs/v5/city_cv/fold2/best.pt",
+      "checkpoint_sha256": "2cc0e030bc3e8a2099762dfd31f9a9e8052d754610f1e1e5dd8ec1db49717acc",
+      "epoch": 8,
+      "seed": 2,
+      "weights": "EMA"
+    },
+    {
+      "name": "member3",
+      "checkpoint": "runs/v5/city_cv/fold3/best.pt",
+      "checkpoint_sha256": "e8c9196202085ef751b0416442f6ce908dc3830c9f93ef7c69e119c1c3fc0f87",
+      "epoch": 11,
+      "seed": 3,
+      "weights": "EMA"
+    }
+  ],
+  "source_sha256": {
+    "evaluations/dtld_test/member0/predictions.npz": "4bcb71fbc13c30f2dad49a8f094dcc2c2a232a7c16f7ee57e81970fee3b32e21",
+    "evaluations/dtld_test/member0/report.json": "63bcfdafafd8289e51699deeb84eca726b15091ada6d8f8bfd57752cc99f75df",
+    "evaluations/dtld_test/member1/predictions.npz": "a557965ac8975250ed0df1d2b5a94641fd317732eeb23ad5f046ae26734b8cdf",
+    "evaluations/dtld_test/member1/report.json": "f1cbcc2b4e842f8b1d9698a5c8bab96f9cf648f825075434af02fa399e4b62c6",
+    "evaluations/dtld_test/member2/predictions.npz": "88f4a34904e6c21d71fdb21ead668e68afef5a5623eaf959d204feb1127995ee",
+    "evaluations/dtld_test/member2/report.json": "8691986e9493d581159393f2bff37eb15832d409aac2e9176cbee4fbee8ff346",
+    "evaluations/dtld_test/member3/predictions.npz": "637142d42d07dbc0355bfbcdd1d5f52012f74b1c0308eecf11ef25365469bbc1",
+    "evaluations/dtld_test/member3/report.json": "c60a7ead44dd2d94d9affdcecfaa2ea731189964caa9ad3abea9db314f988d5a",
+    "evaluations/dtld_test/predictions.npz": "8b3618cb964912f03448ebb72cf9405c431dfb3f11b1f10851738a1db5419300",
+    "evaluations/dtld_test/report.json": "c5b0b8a856a546993afcd79384b35b596d64b6b6acced4cd0a0325faa411fd43",
+    "evaluations/dtld_test/plan.json": "81c9f77b518d00e359a66fcb72dbbe2918d688b79eeb1adb6cc043b71a3c8666",
+    "evaluations/dtld_test/data_audit.json": "9d61efb736d49b5fb76d02d37ae578f28ebba455b9b7520eca610b3dd72e00d1",
+    "evaluations/dtld_test/membership.json": "893c0bb3b73adacaa3d11feaea2ec60c7a9c66919f1b3a94fc17d4c8967909ab"
+  },
+  "source_hash_format": "Protocol source hashes use executed file bytes; LF-normalized hashes below support cross-platform checkout verification",
+  "source_sha256_lf": {
+    "scripts/evaluate.py": "7a7288729b872c7b6b18d7e8dfff642b43346d0b38c4a2c4b17d7d16dd028581",
+    "src/dinov3_global/evaluation.py": "28801b887cc179228482fb1e9c619228dd1d53ff566c7d8980bb6046692edf4b",
+    "src/dinov3_global/model.py": "d612e88af60c78bb1ab24f291c5de43c12ee237e33cea26e863d8be6a709c064",
+    "src/dinov3_global/head.py": "ae79c0da9b26370abfa47447963ec78024efbe5a09e8fca84ef8968d69570853",
+    "src/dinov3_global/backbone.py": "d19e76453c7d8e2dc9639709470e3c81218c1738cb26160d30fd75dab1d4091c",
+    "src/dinov3_global/data.py": "2ee8b8f78708771f51be01c39015415bdcf9ea8556270f066eae6f54935d725a",
+    "src/dinov3_global/dtld.py": "170ecff471571ae9fb98c51bd05a3441dd075e7f452e9d43d99d06b7c8eeb8fa",
+    "src/dinov3_global/metrics.py": "f3384e97fcbdb8dfb9bbae0373110e96d27a9b526734fe81732f5a196515c3a9",
+    "src/dinov3_global/runtime.py": "30d2dae0e8b780429c43164b0c25e610bc1536614abe42ded694c1f139190210",
+    "src/dinov3_global/config.py": "1c7c5344af7dfe3c63241957ebb9cc97bd512126a538b3d19366bbbd91a2a603",
+    "src/dinov3_global/engine.py": "3b2a5e567ecaa48953b41533c4877ef7a0c660cfca1596caf79020167e6cc169"
+  },
+  "exporter": {
+    "path": "scripts/summarize_results.py",
+    "sha256": "09c927f954595be6446e57b90e1b8fc8d831942ae6b07d1857940f1abdc9a8bc"
+  }
+}

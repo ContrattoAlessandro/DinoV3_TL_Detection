@@ -1,0 +1,17 @@
+{
+  "dinov3_global/configs/v4_safe.yaml": "3f00a261cb9d5989e48ef20bbb2567a369098e9511f94b491193d9dd70ced833",
+  "dinov3_global/configs/v5.yaml": "d1d60f323efd5d25a0f9fd867905c59900bd58c355d8afb7aa3d3303e8539990",
+  "dinov3_global/dinov3_global/__init__.py": "57a2e03150c4ba606b7c29812e46fc8b99b9327dbfdd77b1169e348aaf806836",
+  "dinov3_global/dinov3_global/augment.py": "3a304ef589156d6be578ddfb2754aafd22f19e3bdd75316aa423ca1961945468",
+  "dinov3_global/dinov3_global/backbone.py": "1cecce94bbb6f2e9266dcd2f6800fed0c817d2038108f4a5fe76ee13351a9ca1",
+  "dinov3_global/dinov3_global/data_global.py": "883ff8570829099cf714bc4a61d2509b2ca8417ebf1af042b97430f0d8b92a00",
+  "dinov3_global/dinov3_global/decoder.py": "4a9d51f4578e6b15a115e99161ef03ab129f0304252d0a5625e1ef4935133fd9",
+  "dinov3_global/dinov3_global/dtld_native.py": "7b69f46fa2431694f14db4646ce8e914a69a2396fcea674dd89c93eb743854c1",
+  "dinov3_global/dinov3_global/engine.py": "487d76e6763c60b0866f28324458084888dd5efe9b8be162d7ce32e243d8f4da",
+  "dinov3_global/dinov3_global/eval_global.py": "0fb1aa2b888628b7f788148fa2baba15c6677a4332b40ab52fe7d1f271c88f95",
+  "dinov3_global/dinov3_global/losses.py": "329bea8d8216634006fcd8a4a787635f0473c6b4d675e4ee2613d8703fd977d9",
+  "dinov3_global/dinov3_global/model.py": "c3ceb0debafcf4c5012699543141a69ee4f8702e6ad8d1a9c092a757ceb4b7a2",
+  "dinov3_global/scripts/compare_city.py": "924fb268a94701d037a6329f90dfea1412af1b96ac758008ad33481cbd3f2c2b",
+  "dinov3_global/scripts/crossval_city.py": "6adf8bc1262e5382e95b6cb3135971610c5501c13dbaecd4c1e7a928eb5a2357",
+  "dinov3_global/scripts/runtime_loader.py": "3173a14b6b1645c5b403badd746a956ad7a11187e2999170670a808edd3935d3"
+}

@@ -1,0 +1,1 @@
+{"resume_epoch": 0, "runtime_loader": {"num_workers": 2, "pin_memory": true, "prefetch_factor": 4, "persistent_workers": false, "cpu_threads": 1}, "script_sha256": "7c23ac642ad21fa8f54630882607710be605e9cd73ef90d464b1361f60e4c372"}

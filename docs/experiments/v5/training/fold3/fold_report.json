@@ -1,0 +1,112 @@
+{
+  "val_cities": [
+    "Duesseldorf",
+    "Frankfurt"
+  ],
+  "metrics": {
+    "AP_RR": 0.9349620672105264,
+    "AP_RG": 0.9795526200599431,
+    "AP_NoR": 0.42110341546433705,
+    "mAP": 0.7785393675782689,
+    "acc_bal": 0.8243978110695628,
+    "n": 7028,
+    "n_classes": 3,
+    "cm_RR_RR": 1659,
+    "cm_RG_RG": 4169,
+    "cm_NoR_NoR": 289,
+    "temperature": 1.0,
+    "ece": 0.09101220655788028
+  },
+  "slices": {
+    "city": {
+      "Duesseldorf": {
+        "AP_RR": 0.9281248474052806,
+        "AP_RG": 0.9776127151747158,
+        "AP_NoR": 0.38319184963721636,
+        "mAP": 0.7629764707390709,
+        "acc_bal": 0.7985928147728133,
+        "n": 3842,
+        "n_classes": 3,
+        "cm_RR_RR": 790,
+        "cm_RG_RG": 2425,
+        "cm_NoR_NoR": 116
+      },
+      "Frankfurt": {
+        "AP_RR": 0.9424888681651715,
+        "AP_RG": 0.984674634807882,
+        "AP_NoR": 0.489629108661271,
+        "mAP": 0.8055975372114416,
+        "acc_bal": 0.845389403538568,
+        "n": 3186,
+        "n_classes": 3,
+        "cm_RR_RR": 869,
+        "cm_RG_RG": 1744,
+        "cm_NoR_NoR": 173
+      }
+    },
+    "size": {
+      "small(<16px)": {
+        "AP_RR": 0.873932595470713,
+        "AP_RG": 0.8952426586339731,
+        "AP_NoR": 0.17735514398225694,
+        "mAP": 0.648843466028981,
+        "acc_bal": 0.6814608280150285,
+        "n": 432,
+        "n_classes": 3,
+        "cm_RR_RR": 100,
+        "cm_RG_RG": 175,
+        "cm_NoR_NoR": 18
+      },
+      "mid(16-48px)": {
+        "AP_RR": 0.9557376172580148,
+        "AP_RG": 0.9833836568171039,
+        "AP_NoR": 0.5033048226620463,
+        "mAP": 0.8141420322457217,
+        "acc_bal": 0.8484379326770988,
+        "n": 4229,
+        "n_classes": 3,
+        "cm_RR_RR": 1052,
+        "cm_RG_RG": 2532,
+        "cm_NoR_NoR": 180
+      },
+      "large(>=48px)": {
+        "AP_RR": 0.905198736890635,
+        "AP_RG": 0.9830484332637188,
+        "AP_NoR": 0.4013977974132684,
+        "mAP": 0.7632149891892075,
+        "acc_bal": 0.8072695073477352,
+        "n": 2367,
+        "n_classes": 3,
+        "cm_RR_RR": 507,
+        "cm_RG_RG": 1462,
+        "cm_NoR_NoR": 91
+      }
+    }
+  },
+  "best_epoch": 11,
+  "seed": 3,
+  "audit": {
+    "fold": 3,
+    "val_cities": [
+      "Duesseldorf",
+      "Frankfurt"
+    ],
+    "n_train": 21497,
+    "n_val": 7028,
+    "train_hist": [
+      7539,
+      12970,
+      988
+    ],
+    "val_hist": [
+      2031,
+      4613,
+      384
+    ],
+    "n_train_sequences": 1106,
+    "n_val_sequences": 372,
+    "session_overlap": 0,
+    "val_pseudo_nor": 50,
+    "val_membership_sha256": "2c77227111807318e8e7298f0d753873ae48dc4cdf7a7d56d1dcbb73e551def1"
+  }
+}

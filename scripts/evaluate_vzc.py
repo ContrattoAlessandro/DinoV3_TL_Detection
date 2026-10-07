@@ -78,7 +78,7 @@ def source_hashes():
         ],
         REPO / "src/dinov3_global/inference.py",
         REPO / "src/dinov3_global/preprocessing.py",
-        REPO / "src/dinov3_global/evidence_head.py",
+        REPO / "src/dinov3_global/pooling.py",
     ]
     return {str(p.relative_to(REPO)): sha256(p) for p in files}
 
@@ -364,7 +364,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", type=Path, default=REPO / "datasets/VZC_TLD")
     parser.add_argument("--manifest", type=Path, default=REPO / "datasets/VZC_TLD/download_manifest.json")
-    parser.add_argument("--out", type=Path, default=REPO / "runs/v5/vzc")
+    parser.add_argument("--out", type=Path, default=REPO / "runs/vzc")
     parser.add_argument("--ckpt", nargs="+", type=Path)
     parser.add_argument("--model-names", nargs="+", help="Names matching --ckpt order")
     parser.add_argument("--batch", type=int, default=4)
@@ -373,7 +373,7 @@ def main():
     if args.batch < 1:
         raise ValueError("Batch size must be positive")
     args.out.mkdir(parents=True, exist_ok=True)
-    checkpoints = args.ckpt or [REPO / f"runs/v5/city_cv/fold{f}/best.pt" for f in range(4)]
+    checkpoints = args.ckpt or [REPO / "runs/pretrained/experiment_c_fold0.pt"]
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
     if not manifest.get("image_integrity_verified"):
         raise ValueError("Download manifest must verify image integrity")

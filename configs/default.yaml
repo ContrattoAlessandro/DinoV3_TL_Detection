@@ -1,9 +1,10 @@
-# v5; exact scientific configuration of the completed 12-epoch city folds.
+# Experiment C: canonical architecture and training settings.
+# Fresh runs select EMA checkpoints by validation mAP; historical selection is archived.
 data:
   label_dir: datasets/DTLD/v2.0
-  img_root: datasets/DTLD_1280
+  img_root: datasets/DTLD_jpg
   crop_sides: 0
-  label_crop_sides: 114
+  label_crop_sides: 0
   target_hw:
   - 720
   - 1280
@@ -15,7 +16,8 @@ data:
   val_seed: 0
   label_policy: map_to_nor
   policy_weight: 1.0
-  sampler: pow075
+  sampler: none
+  preprocessing: letterbox
 backbone:
   hf_id: facebook/dinov3-vits16plus-pretrain-lvd1689m
   local_ckpt: null
@@ -27,7 +29,7 @@ backbone:
   dtype: float16
   mid_layer: 6
 decoder:
-  head: mil
+  head: v7_evidence
   proj_dim: 192
   dropout: 0.2
   pool: local
@@ -36,14 +38,9 @@ decoder:
   - 2
   - 4
   logit_scale: 2.5
-  nor_sees_evidence: true
-  dir_head: true
-  cls_modulates_evidence: true
-  positional_mode: relevance
   relevance_context: true
-  scene_dropout: 0.3
-  scene_prior_bound: 0.5
-  nor_scene_bound: 0.5
+  context_dropout: 0.5
+  context_bound: 1.0
 optim:
   seed: 0
   lr: 6.0e-05
@@ -57,9 +54,10 @@ optim:
   ema_decay: 0.999
   early_stop_metric: mAP
   early_stop_patience: 0
+  clean_probe_size: 1024
 loss:
   label_smoothing: 0.05
-  tau_la: 0.35
+  tau_la: 0.0
   token_lamp: 0.3
   token_state: 0.2
   token_rel: 0.5
@@ -70,10 +68,12 @@ loss:
   rel_focal_gamma: 2.0
   state_balance: sqrt
   state_rel_boost: 2.0
-  per_branch_supervision: true
   consist: 0.1
   consist_warmup_epochs: 3
   supervise_view2: true
+  class_balance: sqrt
+  attribute_reduction: instance
+  token_pictogram: 0.1
 augment:
   photometric: true
   blur: true
@@ -82,6 +82,8 @@ augment:
   clean_prob: 0.2
   blend_min: 0.35
   p_erase: 0.02
+  zoom_out_prob: 0.5
+  zoom_out_min: 0.9
 loader:
   num_workers: 0
   pin_memory: false

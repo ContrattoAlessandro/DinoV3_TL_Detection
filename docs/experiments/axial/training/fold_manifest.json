@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "source_split": "DTLD_train.json",
+  "annotation_sha256": "959a67ec0d843886d286cd4c7e8513dc8435357d60726231d52c1ba9c873d9b5",
+  "data": {
+    "label_dir": "datasets/DTLD/v2.0",
+    "img_root": "datasets/DTLD_1280",
+    "crop_sides": 0,
+    "label_crop_sides": 114,
+    "target_hw": [
+      720,
+      1280
+    ],
+    "label_policy": "map_to_nor",
+    "policy_weight": 1.0
+  },
+  "items_sha256": "8cc6955fe8b727cae306e1d15aa402061de755ea0cd73ec8ef3f819815df3987",
+  "n_items": 28525,
+  "class_names": [
+    "RR",
+    "RG",
+    "NoR"
+  ],
+  "folds": [
+    {
+      "fold": 0,
+      "val_cities": [
+        "Dortmund",
+        "Kassel",
+        "Fulda"
+      ],
+      "n_train": 21493,
+      "n_val": 7032,
+      "train_hist": [
+        7278,
+        13146,
+        1069
+      ],
+      "val_hist": [
+        2292,
+        4437,
+        303
+      ],
+      "n_train_sequences": 1107,
+      "n_val_sequences": 371,
+      "session_overlap": 0,
+      "val_pseudo_nor": 104,
+      "val_membership_sha256": "b176f1e0ed99295aa04ded3b41b81abda6ab0ba4f859131b7c88f1f546cc70d6"
+    },
+    {
+      "fold": 1,
+      "val_cities": [
+        "Koeln",
+        "Essen",
+        "Bochum"
+      ],
+      "n_train": 21308,
+      "n_val": 7217,
+      "train_hist": [
+        7295,
+        12842,
+        1171
+      ],
+      "val_hist": [
+        2275,
+        4741,
+        201
+      ],
+      "n_train_sequences": 1120,
+      "n_val_sequences": 358,
+      "session_overlap": 0,
+      "val_pseudo_nor": 51,
+      "val_membership_sha256": "f0ee9a9fb80546d895d60c487b58b864e11833685ce944d86c408c9d03196901"
+    },
+    {
+      "fold": 2,
+      "val_cities": [
+        "Hannover",
+        "Berlin",
+        "Bremen"
+      ],
+      "n_train": 21277,
+      "n_val": 7248,
+      "train_hist": [
+        6598,
+        13791,
+        888
+      ],
+      "val_hist": [
+        2972,
+        3792,
+        484
+      ],
+      "n_train_sequences": 1101,
+      "n_val_sequences": 377,
+      "session_overlap": 0,
+      "val_pseudo_nor": 248,
+      "val_membership_sha256": "c5284d6331995118add10e32c2f63b11399f119501be8cd312d35165749c4347"
+    },
+    {
+      "fold": 3,
+      "val_cities": [
+        "Duesseldorf",
+        "Frankfurt"
+      ],
+      "n_train": 21497,
+      "n_val": 7028,
+      "train_hist": [
+        7539,
+        12970,
+        988
+      ],
+      "val_hist": [
+        2031,
+        4613,
+        384
+      ],
+      "n_train_sequences": 1106,
+      "n_val_sequences": 372,
+      "session_overlap": 0,
+      "val_pseudo_nor": 50,
+      "val_membership_sha256": "2c77227111807318e8e7298f0d753873ae48dc4cdf7a7d56d1dcbb73e551def1"
+    }
+  ],
+  "purpose": "Configuration/epoch selection inside official train; not the paper test split"
+}

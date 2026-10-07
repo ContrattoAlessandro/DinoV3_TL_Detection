@@ -1,33 +1,36 @@
 {
-  "architecture": "v5",
+  "architecture": "DinoGlobal-MIL (Experiment C)",
+  "serialized_head": "v7_evidence",
   "weights": "EMA",
-  "official_DTLD_test": {
-    "primary_predictor": "equal-weight mean-logit ensemble of all four EMA heads at T=1",
-    "protocol": "docs/results/dtld_test_protocol.json",
-    "results": "docs/results/README.md",
-    "provenance": "docs/results/dtld_test_provenance.json",
-    "full_training_split_refit": false
-  },
   "checkpoints": [
     {
-      "name": "v5_fold0",
-      "checkpoint": "runs/v5/city_cv/fold0/best.pt",
-      "checkpoint_sha256": "4805517417e88cd437cf2e1e3dc7c72b76ce18630b794369b0514cbe6844fb87"
-    },
-    {
-      "name": "v5_fold1",
-      "checkpoint": "runs/v5/city_cv/fold1/best.pt",
-      "checkpoint_sha256": "58cfbd19b72709a84744fad3330ae405a22ac87967a604430264b5396785f976"
-    },
-    {
-      "name": "v5_fold2",
-      "checkpoint": "runs/v5/city_cv/fold2/best.pt",
-      "checkpoint_sha256": "2cc0e030bc3e8a2099762dfd31f9a9e8052d754610f1e1e5dd8ec1db49717acc"
-    },
-    {
-      "name": "v5_fold3",
-      "checkpoint": "runs/v5/city_cv/fold3/best.pt",
-      "checkpoint_sha256": "e8c9196202085ef751b0416442f6ce908dc3830c9f93ef7c69e119c1c3fc0f87"
+      "name": "experiment_c_fold0",
+      "checkpoint": "runs/pretrained/experiment_c_fold0.pt",
+      "checkpoint_sha256": "7be4e19ae4ac03a1422983a15aa561f4d2f91a324be8e0e055dad56536c985da",
+      "epoch": 5,
+      "seed": 0,
+      "train_images": 21493,
+      "validation_images": 7032,
+      "validation_cities": [
+        "Dortmund",
+        "Kassel",
+        "Fulda"
+      ],
+      "validation_mAP": 0.6937446754351165
     }
-  ]
+  ],
+  "checkpoint_selection": "Highest fold-0 validation mAP; originally best_unconstrained.pt",
+  "original_study_eligible": false,
+  "default_choice": {
+    "date": "2026-10-07",
+    "basis": "User-directed architecture choice after diagnostic comparisons",
+    "original_validation_gate_passed": false,
+    "confirmatory_architecture_test": false
+  },
+  "future_training_selection": "Highest validation mAP EMA at T=1, earlier epoch wins ties",
+  "full_training_split_refit": false,
+  "four_fold_C_evaluation_completed": false,
+  "results": "docs/results/README.md",
+  "history": "docs/experiments/README.md",
+  "checkpoint_distribution": "Local only; no public checkpoint download is published"
 }

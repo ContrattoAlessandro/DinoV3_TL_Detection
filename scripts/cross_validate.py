@@ -1,4 +1,4 @@
-"""Audited, resumable city-disjoint cross-validation of the v5 architecture."""
+"""Audited, resumable city-disjoint cross-validation of the default evidence MIL architecture."""
 
 import argparse
 import copy
@@ -19,7 +19,6 @@ from dinov3_global.config import load_config, architecture_name
 from dinov3_global.data import DTLDGlobalDataset, class_frequencies, collate_global
 from dinov3_global.engine import _build_model, _make_sampler, fit, predict_split, set_seed, _pseudo_flags
 from dinov3_global.engine import dataset_options
-from dinov3_global.study import baseline_gate
 from dinov3_global.metrics import report
 from dinov3_global.validation import make_folds, digest, atomic_json, fold_manifest
 from dinov3_global.runtime import loader_kwargs, validate_runtime, set_training_threads
@@ -28,7 +27,7 @@ from dinov3_global.runtime import loader_kwargs, validate_runtime, set_training_
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/default.yaml")
-    ap.add_argument("--out", default="runs/v5/city_cv")
+    ap.add_argument("--out", default="runs/city_cv")
     ap.add_argument("--folds", type=int, default=4)
     ap.add_argument("--epochs", type=int, default=12)
     ap.add_argument("--max-items", type=int, default=0, help="smoke: cap items (0 = all)")
@@ -66,11 +65,11 @@ def main():
         ir,
         "train",
         train=False,
-        crop_sides=d.get("crop_sides", 114),
-        label_crop_sides=d.get("label_crop_sides", 114),
+        crop_sides=d.get("crop_sides", 0),
+        label_crop_sides=d.get("label_crop_sides", 0),
         target_hw=(th, tw),
         label_policy=d.get("label_policy", "map_to_nor"),
-        policy_weight=float(d.get("policy_weight", 0.3)),
+        policy_weight=float(d.get("policy_weight", 1.0)),
         **dataset_options(cfg),
     )
     folds, by_city = make_folds(full.items, args.folds)
@@ -175,11 +174,11 @@ def main():
             ir,
             "train",
             train=True,
-            crop_sides=d.get("crop_sides", 114),
-            label_crop_sides=d.get("label_crop_sides", 114),
+            crop_sides=d.get("crop_sides", 0),
+            label_crop_sides=d.get("label_crop_sides", 0),
             target_hw=(th, tw),
             label_policy=d.get("label_policy", "map_to_nor"),
-            policy_weight=float(d.get("policy_weight", 0.3)),
+            policy_weight=float(d.get("policy_weight", 1.0)),
             items=tr_items,
             **dataset_options(cfg),
         )
@@ -188,11 +187,11 @@ def main():
             ir,
             "train",
             train=False,
-            crop_sides=d.get("crop_sides", 114),
-            label_crop_sides=d.get("label_crop_sides", 114),
+            crop_sides=d.get("crop_sides", 0),
+            label_crop_sides=d.get("label_crop_sides", 0),
             target_hw=(th, tw),
             label_policy=d.get("label_policy", "map_to_nor"),
-            policy_weight=float(d.get("policy_weight", 0.3)),
+            policy_weight=float(d.get("policy_weight", 1.0)),
             items=va_items,
             **dataset_options(cfg),
         )
@@ -205,23 +204,6 @@ def main():
         log_pi = torch.log(torch.tensor(class_frequencies(tr_ds), dtype=torch.float32) + 1e-8)
         fold_cfg = copy.deepcopy(cfg)
         fold_cfg["optim"]["seed"] = int(cfg["optim"].get("seed", 0)) + fi
-        if fold_cfg["optim"].get("early_stop_metric") == "signal_recall":
-            reference = Path(
-                repo_root, fold_cfg["optim"]["selection_reference"], f"fold{fi}", "val_predictions.npz"
-            )
-            with np.load(reference, allow_pickle=False) as predictions:
-                expected_names = [Path(it["entry"]["image_path"]).stem for it in va_items]
-                actual_names = [Path(path).stem for path in predictions["paths"].tolist()]
-                if actual_names != expected_names or predictions["labels"].tolist() != [
-                    it["y"] for it in va_items
-                ]:
-                    raise ValueError("Validation selection baseline membership differs")
-                fold_cfg["optim"]["selection_baseline"] = baseline_gate(
-                    report(predictions["labels"], predictions["logits"])
-                )
-                fold_cfg["optim"]["selection_baseline_sha256"] = hashlib.sha256(
-                    reference.read_bytes()
-                ).hexdigest()
         # Keep initialisation on the original CPU threading setting. Runtime
         # tuning applies only after the head has been created/restored.
         torch.set_num_threads(initial_cpu_threads)
@@ -244,8 +226,6 @@ def main():
                 best_init=sd["best_score"],
                 stale_init=sd.get("stale_epochs", 0),
                 rng_state=sd.get("rng_state"),
-                best_selection_key=sd.get("best_selection_key"),
-                best_diagnostic_map=sd.get("best_diagnostic_map", -1),
             )
             del sd
         set_training_threads(runtime)
@@ -269,8 +249,7 @@ def main():
             )
 
         # final fold report from best.pt
-        eligible = Path(fold_dir, "best.pt").exists()
-        chosen_path = Path(fold_dir, "best.pt" if eligible else "best_unconstrained.pt")
+        chosen_path = Path(fold_dir, "best.pt")
         sd = torch.load(chosen_path, map_location="cpu", weights_only=True)
         model.head.load_state_dict(sd["ema"])
         ys, lgs, meta = predict_split(model, vl, dev)
@@ -281,9 +260,7 @@ def main():
             "metrics": rep["metrics"],
             "slices": rep.get("slices", {}),
             "best_epoch": sd["epoch"],
-            "eligible": eligible,
-            "checkpoint_role": "selected" if eligible else "unconstrained diagnostic; not promotable",
-            "selection_key": sd.get("best_selection_key"),
+            "checkpoint_role": "highest validation mAP EMA",
             "seed": fold_cfg["optim"]["seed"],
             "audit": manifest["folds"][fi],
         }

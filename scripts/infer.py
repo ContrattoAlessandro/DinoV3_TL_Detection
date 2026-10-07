@@ -1,4 +1,4 @@
-"""Predict RR/RG/NoR from a folder of images using a saved v5 checkpoint."""
+"""Predict RR/RG/NoR from a folder of images using a saved Experiment C checkpoint."""
 
 import argparse
 from collections import Counter
@@ -22,7 +22,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ckpt", type=Path, required=True)
     parser.add_argument("--images", type=Path, required=True)
-    parser.add_argument("--out", type=Path, default=REPO / "runs/v5/inference")
+    parser.add_argument("--out", type=Path, default=REPO / "runs/inference")
     parser.add_argument("--crop-sides", type=int, default=0)
     parser.add_argument("--max-images", type=int, default=0)
     parser.add_argument("--overlays", action="store_true")

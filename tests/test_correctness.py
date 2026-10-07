@@ -16,7 +16,8 @@ from dinov3_global.data import (  # noqa: E402
     global_label_from_states,
     token_targets,
 )
-from dinov3_global.head import MILBranch, TokenMILHead
+from dinov3_global.head import EvidenceMILHead
+from dinov3_global.pooling import local_evidence_pool
 from dinov3_global.losses import (  # noqa: E402
     consistency_kl,
     global_loss,
@@ -412,18 +413,17 @@ def test_direction_targets():
 # --------------------------------------------------------------------------- #
 def test_local_pooling():
     """pool='local' aggregates a lamp's tokens and keeps singletons intact."""
-    br = MILBranch(8, 0.0, k=1, grid_hw=(4, 4))
     e = torch.zeros(1, 16)
     lamp = torch.zeros(1, 16)
     # A: isolated single-token lamp -> NOT diluted by the window mass
     e[0, 5], lamp[0, 5] = 0.9, 1.0
-    s = br.pooled(e, lamp=lamp)
+    s = local_evidence_pool(e, lamp, (4, 4), 1)
     assert abs(float(s) - 0.9) < 1e-5, f"singleton diluted: {float(s)}"
     # B: two-token lamp where only one token fires -> averaged, unlike max-pool
     e2 = torch.zeros(1, 16)
     lamp2 = torch.zeros(1, 16)
     e2[0, 5], e2[0, 6], lamp2[0, 5], lamp2[0, 6] = 0.9, 0.1, 1.0, 1.0
-    s2 = br.pooled(e2, lamp=lamp2)
+    s2 = local_evidence_pool(e2, lamp2, (4, 4), 1)
     assert abs(float(s2) - 0.5) < 1e-5, f"expected 0.5, got {float(s2)}"
     assert float(s2) < 0.9, "local pooling must suppress single-token noise"
     # topk on the raw map would have returned the noisy peak
@@ -431,24 +431,24 @@ def test_local_pooling():
 
 
 # --------------------------------------------------------------------------- #
-# 9. direction head + rel input, CLS modulation, mid fusion
+# 9. shared attributes, relevance inputs, and intermediate feature fusion
 # --------------------------------------------------------------------------- #
 def test_dir_head_and_rel_input():
     torch.manual_seed(0)
-    h = TokenMILHead(384, 64, topk=(1, 2), grid_hw=(4, 5))
-    br = h.branches[0]
-    assert br.dir is not None and br.dir.out_features == 4
-    assert br.rel.in_features == 64 + 4 + 4, "rel must see [z; geo; dir_post]"
-    lg, aux = h(torch.randn(2, 20, 384), torch.randn(2, 384))
-    assert lg.shape == (2, 3)
+    h = EvidenceMILHead(384, 64, topk=(1, 2), grid_hw=(4, 5))
+    assert h.dir.out_features == 4 and h.pictogram.out_features == 10
+    assert h.rel_base[0].in_features == 64 + 4 + 10
+    assert h.rel_context[0].in_features == 64 + 4 + 10 + 4 + 64
+    logits, aux = h(torch.randn(2, 20, 384), torch.randn(2, 384))
+    assert logits.shape == (2, 3)
     assert aux["maps"]["dir_logit"].shape == (2, 20, 4)
-    lg.sum().backward()
-    assert br.dir.weight.grad is not None and br.rel.weight.grad is not None
+    logits.sum().backward()
+    assert h.dir.weight.grad is not None and h.rel_base[0].weight.grad is not None
 
 
 def test_mid_fusion_shapes():
     torch.manual_seed(0)
-    h = TokenMILHead(768, 64, topk=(1,), grid_hw=(4, 5))
+    h = EvidenceMILHead(768, 64, topk=(1,), grid_hw=(4, 5))
     p = torch.randn(2, 20, 384)
     lg, aux = h(p, torch.randn(2, 384), patches_mid=torch.randn(2, 20, 384), cls_mid=torch.randn(2, 384))
     assert lg.shape == (2, 3)

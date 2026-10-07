@@ -1,4 +1,4 @@
-"""Train the default v5 architecture on session-disjoint DTLD training data."""
+"""Train the default Experiment C architecture on session-disjoint DTLD training data."""
 
 import argparse
 import os
@@ -14,7 +14,7 @@ from dinov3_global.config import load_config
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/default.yaml")
-    ap.add_argument("--out", default="runs/v5/train")
+    ap.add_argument("--out", default="runs/train")
     ap.add_argument("--device", default=None)
     ap.add_argument("--epochs", type=int, default=None)
     ap.add_argument("--seed", type=int, default=None)

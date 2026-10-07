@@ -96,7 +96,7 @@ def test_shared_encoder_is_bitwise_equal_to_complete_forwards_and_preserves_orde
 
     encoder = TinyEncoder()
     monkeypatch.setattr(AutoModel, "from_pretrained", lambda *args, **kwargs: encoder)
-    model = DinoGlobal(dtype="float32", grid_hw=(2, 3), proj_dim=8, dropout=0, scene_dropout=0).eval()
+    model = DinoGlobal(dtype="float32", grid_hw=(2, 3), proj_dim=8, dropout=0).eval()
     heads = [model.head, deepcopy(model.head).eval()]
     with torch.no_grad():
         heads[1].bias.add_(0.5)

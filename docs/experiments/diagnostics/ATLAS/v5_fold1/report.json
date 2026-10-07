@@ -1,0 +1,168 @@
+{
+  "metrics": {
+    "AP_RR": 0.8881336148402786,
+    "AP_RG": 0.7381505303748283,
+    "AP_NoR": 0.7390621521213506,
+    "mAP": 0.7884487657788192,
+    "acc_bal": 0.6200783112797191,
+    "n": 528,
+    "n_classes": 3,
+    "cm_RR_RR": 100,
+    "cm_RG_RG": 48,
+    "cm_NoR_NoR": 178,
+    "temperature": 1.0,
+    "ece": 0.141329636047103,
+    "accuracy": 0.6174242424242424,
+    "macro_F1": 0.6104484233334605,
+    "weighted_F1": 0.6060570024494009,
+    "nll": 0.8693863086357465,
+    "brier": 0.5112735153463693
+  },
+  "per_class": {
+    "RR": {
+      "precision": 0.9523809523809523,
+      "recall": 0.40816326530612246,
+      "f1-score": 0.5714285714285714,
+      "support": 245.0
+    },
+    "RG": {
+      "precision": 0.7741935483870968,
+      "recall": 0.5052631578947369,
+      "f1-score": 0.6114649681528662,
+      "support": 95.0
+    },
+    "NoR": {
+      "precision": 0.4930747922437673,
+      "recall": 0.9468085106382979,
+      "f1-score": 0.6484517304189436,
+      "support": 188.0
+    },
+    "accuracy": 0.6174242424242424,
+    "macro avg": {
+      "precision": 0.7398830976706056,
+      "recall": 0.6200783112797191,
+      "f1-score": 0.6104484233334605,
+      "support": 528.0
+    },
+    "weighted avg": {
+      "precision": 0.7567798889619995,
+      "recall": 0.6174242424242424,
+      "f1-score": 0.6060570024494009,
+      "support": 528.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      100,
+      6,
+      139
+    ],
+    [
+      3,
+      48,
+      44
+    ],
+    [
+      2,
+      8,
+      178
+    ]
+  ],
+  "class_order": [
+    "RR",
+    "RG",
+    "NoR"
+  ],
+  "class_names": [
+    "RR",
+    "RG",
+    "NoR"
+  ],
+  "class_counts": {
+    "RR": 245,
+    "RG": 95,
+    "NoR": 188
+  },
+  "accuracy": 0.6174242424242424,
+  "excluded": {},
+  "per_camera": {
+    "front_medium": {
+      "AP_RR": 0.8959021853437632,
+      "AP_RG": 0.7755117066269444,
+      "AP_NoR": 0.7565682001995542,
+      "mAP": 0.8093273640567539,
+      "acc_bal": 0.6513114360634263,
+      "n": 393,
+      "n_classes": 3,
+      "cm_RR_RR": 81,
+      "cm_RG_RG": 39,
+      "cm_NoR_NoR": 134,
+      "temperature": 1.0,
+      "ece": 0.16172196392880672,
+      "accuracy": 0.6463104325699746,
+      "macro_F1": 0.6453625664145357,
+      "weighted_F1": 0.6385238649511575,
+      "nll": 0.8476046022557613,
+      "brier": 0.49465361183961143,
+      "class_counts": {
+        "RR": 182,
+        "RG": 69,
+        "NoR": 142
+      }
+    },
+    "front_tele": {
+      "AP_RR": 0.8645033613058685,
+      "AP_RG": 0.6893465620485777,
+      "AP_NoR": 0.6727994765172683,
+      "mAP": 0.7422164666239048,
+      "acc_bal": 0.5898635477582846,
+      "n": 86,
+      "n_classes": 3,
+      "cm_RR_RR": 17,
+      "cm_RG_RG": 7,
+      "cm_NoR_NoR": 28,
+      "temperature": 1.0,
+      "ece": 0.17169980599733653,
+      "accuracy": 0.6046511627906976,
+      "macro_F1": 0.5892755392755392,
+      "weighted_F1": 0.5980279410511969,
+      "nll": 0.9067995092191156,
+      "brier": 0.5392874558450551,
+      "class_counts": {
+        "RR": 38,
+        "RG": 18,
+        "NoR": 30
+      }
+    },
+    "front_wide": {
+      "AP_RR": 0.9418803723907014,
+      "AP_RG": 0.6245535714285714,
+      "AP_NoR": 0.7802744024799069,
+      "mAP": 0.78223611543306,
+      "acc_bal": 0.44333333333333336,
+      "n": 49,
+      "n_classes": 3,
+      "cm_RR_RR": 2,
+      "cm_RG_RG": 2,
+      "cm_NoR_NoR": 16,
+      "temperature": 1.0,
+      "ece": 0.19573546865985827,
+      "accuracy": 0.40816326530612246,
+      "macro_F1": 0.3358548645904968,
+      "weighted_F1": 0.3059760892273208,
+      "nll": 0.9784204995982866,
+      "brier": 0.595404600964103,
+      "class_counts": {
+        "RR": 25,
+        "RG": 8,
+        "NoR": 16
+      }
+    }
+  },
+  "limitations": [
+    "Small, potentially correlated sample; use as a diagnostic benchmark.",
+    "Do not train/tune on this set and call it unseen-data evaluation.",
+    "DTLD calibration is not guaranteed to transfer to OOD images."
+  ],
+  "prediction_source": "Existing frozen evaluation; raw logits aligned by exact image identity and labels"
+}

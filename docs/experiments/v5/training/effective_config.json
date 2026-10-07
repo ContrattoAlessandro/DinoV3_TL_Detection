@@ -1,0 +1,101 @@
+{
+  "data": {
+    "label_dir": "datasets/DTLD/v2.0",
+    "img_root": "datasets/DTLD_1280",
+    "crop_sides": 0,
+    "label_crop_sides": 114,
+    "target_hw": [
+      720,
+      1280
+    ],
+    "global_classes": [
+      "RR",
+      "RG",
+      "NoR"
+    ],
+    "val_frac": 0.15,
+    "val_seed": 0,
+    "label_policy": "map_to_nor",
+    "policy_weight": 1.0,
+    "sampler": "pow075"
+  },
+  "backbone": {
+    "hf_id": "facebook/dinov3-vits16plus-pretrain-lvd1689m",
+    "local_ckpt": null,
+    "dim": 384,
+    "patch": 16,
+    "frozen": true,
+    "use_cls": true,
+    "attn_implementation": "sdpa",
+    "dtype": "float16",
+    "mid_layer": 6
+  },
+  "decoder": {
+    "head": "mil",
+    "proj_dim": 192,
+    "dropout": 0.2,
+    "pool": "local",
+    "topk": [
+      1,
+      2,
+      4
+    ],
+    "logit_scale": 2.5,
+    "nor_sees_evidence": true,
+    "dir_head": true,
+    "cls_modulates_evidence": true,
+    "positional_mode": "relevance",
+    "relevance_context": true,
+    "scene_dropout": 0.3,
+    "scene_prior_bound": 0.5,
+    "nor_scene_bound": 0.5
+  },
+  "optim": {
+    "seed": 0,
+    "lr": 6e-05,
+    "weight_decay": 0.05,
+    "epochs": 12,
+    "batch": 4,
+    "accum": 4,
+    "warmup_epochs": 3,
+    "amp": true,
+    "grad_clip": 1.0,
+    "ema_decay": 0.999,
+    "early_stop_metric": "mAP",
+    "early_stop_patience": 0
+  },
+  "loss": {
+    "label_smoothing": 0.05,
+    "tau_la": 0.35,
+    "token_lamp": 0.3,
+    "token_state": 0.2,
+    "token_rel": 0.5,
+    "token_dir": 0.2,
+    "lamp_pos_weight": 10.0,
+    "rel_pos_weight": 2.0,
+    "rel_lamp_weight": 0.75,
+    "rel_focal_gamma": 2.0,
+    "state_balance": "sqrt",
+    "state_rel_boost": 2.0,
+    "per_branch_supervision": true,
+    "consist": 0.1,
+    "consist_warmup_epochs": 3,
+    "supervise_view2": true
+  },
+  "augment": {
+    "photometric": true,
+    "blur": true,
+    "strength": 0.8,
+    "per_image": true,
+    "clean_prob": 0.2,
+    "blend_min": 0.35,
+    "p_erase": 0.02
+  },
+  "loader": {
+    "num_workers": 0,
+    "pin_memory": false
+  },
+  "eval": {
+    "split": "test"
+  }
+}

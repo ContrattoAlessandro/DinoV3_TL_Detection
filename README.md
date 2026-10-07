@@ -1,432 +1,342 @@
 # DinoGlobal-MIL
 
-**Scene-conditioned traffic-light relevance classification with a frozen DINOv3 backbone.**
+**Attribute-supervised multiple-instance learning for traffic-light relevance classification with frozen DINOv3 features.**
 
-DinoGlobal-MIL predicts the relevant traffic-light signal for an entire driving
-image. A frozen vision transformer supplies dense visual features; three
-independent multiple-instance learning (MIL) branches estimate lamp presence,
-color state, housing direction, and relevance. Local evidence pooling identifies
-small signals, while bounded scene-context paths incorporate global information.
-Lamp boxes and attributes supervise the head during training. Inference requires
-only an RGB image.
+DinoGlobal-MIL predicts the relevant traffic-light signal for a complete driving
+image. Its compact head estimates lamp presence, state, housing direction,
+pictogram, and relevance, then aggregates local evidence into an image-level
+decision. Training uses lamp annotations; inference requires only an RGB image.
 
-The default **v5** baseline is described below, with canonical configuration
-[configs/default.yaml](configs/default.yaml). The optional **v6_axial** variant adds
-shared spatial attention to relevance only; its matched fold-0 pilot uses
-[configs/spatial_axial.yaml](configs/spatial_axial.yaml).
+**Experiment C is the default and sole supported architecture.** Its shared
+evidence head replaces the previous independent-branch architecture. The
+canonical configuration is [configs/default.yaml](configs/default.yaml).
+[Experiment history](docs/experiments/README.md) preserves previous architectures,
+exact settings, training histories, results, and the original study decisions.
 
-## Task definition
+## Task and label policy
 
-The output is a three-class softmax, in the fixed order **RR, RG, NoR**.
+The model returns three logits in the fixed order **RR, RG, NoR**.
 
-| Class | Image-level label rule |
+| Class | Image-level annotation rule |
 |:--|:--|
 | **RR** | At least one relevant red, yellow, or red-yellow lamp. |
-| **RG** | At least one relevant green lamp, with no relevant RR lamp. |
-| **NoR** | No relevant lamp in an RR or RG state. This includes scenes whose only relevant lamps are off or unknown. |
+| **RG** | At least one relevant green lamp and no relevant RR lamp. |
+| **NoR** | No relevant lamp in an RR or RG state, including relevant off/unknown-only scenes. |
 
-RR takes precedence when relevant lamps have conflicting states. NoR therefore
-means *no relevant stop/go signal under this label policy*; it does not assert
-that the scene contains no traffic light. Relevance is learned from dataset
-annotations. The model is an image classifier, with auxiliary evidence maps.
+RR takes precedence when relevant lamps have conflicting states. Relevance is
+defined by dataset annotations. This is image-level classification: evidence
+maps are auxiliary outputs, and reported mAP does not use detection IoU thresholds.
 
-## Architecture
+## Method
 
 ![DinoGlobal-MIL architecture](docs/assets/architecture.svg)
 
-### 1. Frozen visual encoder and feature fusion
+### Full-frame preprocessing and frozen representation
 
-The encoder is DINOv3 **ViT-S+/16**, initialized from
-[facebook/dinov3-vits16plus-pretrain-lvd1689m](https://huggingface.co/facebook/dinov3-vits16plus-pretrain-lvd1689m).
-The repository pins the backbone revision in [backbone.py](src/dinov3_global/backbone.py).
-All encoder parameters remain frozen, and the encoder stays in evaluation mode
-even while the head trains.
+An RGB image is resized isotropically and centered on a **720 × 1280** letterbox
+canvas using bicubic interpolation. The complete field of view is retained.
+Padding uses RGB (124, 116, 104); a content mask excludes patches entirely within
+padding from supervision and evidence pooling. Patch geometry is expressed in
+the resized content coordinates, so letterbox margins do not shift its meaning.
 
-An RGB image is prepared at $720\times1280$ and normalized with ImageNet mean
-and standard deviation. The $16\times16$ patch size gives a $45\times80$ grid:
-**3,600 patch tokens**. The encoder sequence additionally contains a CLS token
-and four register tokens, for **3,605 tokens**. Register tokens are discarded
-before the head.
+The encoder is **DINOv3 ViT-S+/16**, loaded from
+[facebook/dinov3-vits16plus-pretrain-lvd1689m](https://huggingface.co/facebook/dinov3-vits16plus-pretrain-lvd1689m)
+at the revision pinned in [backbone.py](src/dinov3_global/backbone.py).
+All encoder parameters are frozen and the encoder remains in evaluation mode.
+Pixels are normalized with ImageNet mean and standard deviation.
 
-For each patch, features from transformer layer 6 and the final output are
-concatenated in the order **[final, layer 6]**. The two 384-dimensional vectors
-form a 768-dimensional representation. A shared linear projection and layer
-normalization produce 192-dimensional patch vectors $h_n$ and a scene vector
-$g$ from the corresponding CLS features:
+The patch grid has **45 × 80 = 3,600 tokens**. The encoder additionally returns
+one CLS token and four register tokens; the registers are discarded. Final-layer
+and layer-6 features, each 384-dimensional, are concatenated in that order.
+A shared projection and LayerNorm map both patch and CLS features to width 192:
 
 $$
-h_n=\operatorname{LN}\!\left(W_p[f_n^{\mathrm{final}};f_n^6]+b_p\right),
+h_n = \operatorname{LN}(W_p[f_n^{\mathrm{final}}; f_n^6]+b_p),
 \qquad
-g=\operatorname{LN}\!\left(W_p[f_{\mathrm{CLS}}^{\mathrm{final}};f_{\mathrm{CLS}}^6]+b_p\right).
+g = \operatorname{LN}(W_p[f_{\mathrm{CLS}}^{\mathrm{final}}; f_{\mathrm{CLS}}^6]+b_p).
 $$
 
-### 2. Attribute evidence and scene-conditioned relevance
+### Shared attribute evidence
 
-Each of three independent branches applies a two-layer, width-192 MLP with GELU
-and dropout 0.2 to $h_n$, yielding $z_n^{(b)}$. Linear prediction heads estimate:
+One shared two-layer MLP, with width 192, GELU, and dropout 0.2 after each layer,
+maps $h_n$ to an appearance representation $z_n$. Linear attribute heads predict:
 
-- lamp probability $\lambda_n$: a sigmoid;
-- state distribution $p_n$: a six-way softmax over **green, off, red, red-yellow, unknown, yellow**;
-- housing-direction distribution $d_n$: a four-way softmax over **back, front, left, right**;
-- relevance probability $r_n$: a sigmoid conditioned on appearance, scene, and geometry.
+| Output | Activation | Annotation order |
+|:--|:--|:--|
+| Lamp presence $\lambda_n$ | Sigmoid | Background / lamp |
+| State $p_n$ | Six-way softmax | green, off, red, red-yellow, unknown, yellow |
+| Housing direction $d_n$ | Four-way softmax | back, front, left, right |
+| Pictogram $q_n$ | Ten-way softmax | left arrow, right arrow, straight arrow, straight-left arrow, bicycle, circle, pedestrian, pedestrian-bicycle, tram, unknown |
 
-Lamp, state, and direction heads use $z_n^{(b)}$. The relevance head additionally
-uses a bounded multiplicative scene gate, a fixed two-dimensional sinusoidal
-position vector $P_n$, normalized geometry $\gamma_n=(x_n,y_n,2x_n-1,1-y_n)$,
-and the predicted direction distribution:
+Attribute predictors consume appearance features. Direction and pictogram
+probabilities also enter the relevance predictor and receive gradients through
+that path. The three pooling scales reuse these same predictions.
+
+### Appearance relevance with bounded context correction
+
+Let $a_n=[z_n;d_n;q_n]\in\mathbb{R}^{206}$ and
+$\gamma_n=(x_n,y_n,2x_n-1,1-y_n)$ denote content-relative patch geometry.
+Two width-64 MLPs estimate base relevance and a context correction:
 
 $$
-\widetilde z_n^{(b)}=
-z_n^{(b)}\odot\left(1+0.25\tanh(W_cg+b_c)\right)+P_n,
+\delta_n = \tanh f_{\mathrm{ctx}}([a_n;\gamma_n;g]),
 \qquad
-r_n^{(b)}=\sigma\!\left(W_r^{(b)}[\widetilde z_n^{(b)};\gamma_n;d_n^{(b)}]+b_r^{(b)}\right).
+r_n = \sigma(f_{\mathrm{base}}(a_n)+\delta_n).
 $$
 
-The context projection is shared across branches and initialized to zero.
-Head-added positions and geometry enter the relevance path; the backbone's own
-positional encoding remains part of all visual features. During training, the
-entire scene vector is zeroed independently for each image with probability
-0.3, without rescaling, across all scene-dependent head paths.
+Each MLP uses Linear–GELU–Dropout(0.2)–Linear. The correction is bounded to
+**±1 relevance logit**, and its final layer starts at zero. During training,
+scene and geometry inputs are jointly zeroed with probability **0.5 per image**,
+without rescaling; appearance inputs to the correction remain available.
+The head adds no absolute positional embedding or direct CLS-to-class logit path.
+The frozen transformer features already contain spatial context.
 
-#### Optional relevance-only axial context
+### Local evidence and multi-scale MIL
 
-`v6_axial` computes two shared axial blocks over the complete 45×80 grid. Each
-block uses four-head row attention, four-head column attention, and a width-384
-feed-forward network, with pre-LayerNorm, residual connections, and dropout 0.2.
-Writing the existing CLS gate as $A$, the shared residual is
-$\Delta=\operatorname{Axial}(h\odot A+P)-(h\odot A+P)$.
-Each branch adds this residual to $\widetilde z^{(b)}$ before predicting relevance.
-Lamp, state, and direction MLP inputs remain unchanged. The head has 1,380,739
-trainable parameters, including 891,264 parameters in the shared spatial module.
-Missing `decoder.spatial_context` settings preserve v5 checkpoint compatibility.
-
-The frozen DINOv3 features already incorporate spatial attention. This variant
-tests whether additional trainable spatial reasoning improves relevance; no
-explicit lane geometry or lane-association supervision is added.
-
-Run the matched twelve-epoch pilot and fixed-checkpoint evaluation suite with:
-
-```bash
-python scripts/smoke_axial.py
-python scripts/run_axial_pilot.py
-```
-
-Use `python scripts/run_axial_pilot.py --resume` to resume the pilot. It trains
-only fold 0, selects its best EMA checkpoint by validation mAP, then evaluates
-DTLD official test, all 528 ATLAS labels, and VZC-TLD. Separate logs and artifacts
-are written under `runs/v6_axial_pilot`; the comparison is exported under
-`docs/results/spatial_axial_pilot`. The published v5 results remain the baseline.
-
-Each branch constructs evidence for the two signal classes:
+Signal evidence combines lamp presence, relevance, and compatible state:
 
 $$
-e_{n,\mathrm{RR}}^{(b)}=\lambda_n^{(b)}r_n^{(b)}
-\left(p_{n,\mathrm{red}}^{(b)}+p_{n,\mathrm{yellow}}^{(b)}+p_{n,\mathrm{red\text{-}yellow}}^{(b)}\right),
+e_{n,\mathrm{RR}}=\lambda_n r_n
+(p_{n,\mathrm{red}}+p_{n,\mathrm{yellow}}+p_{n,\mathrm{red\text{-}yellow}}),
 \qquad
-e_{n,\mathrm{RG}}^{(b)}=\lambda_n^{(b)}r_n^{(b)}p_{n,\mathrm{green}}^{(b)}.
+e_{n,\mathrm{RG}}=\lambda_n r_n p_{n,\mathrm{green}}.
 $$
 
-### 3. Local multi-scale MIL pooling
-
-For each class, evidence is reshaped to the patch grid. A lamp-weighted $5\times5$
-local mean reduces sensitivity to individual patch activations:
+For each class, a lamp-weighted **5 × 5** local average (stride 1, padding 2)
+reduces sensitivity to isolated patch activations:
 
 $$
-u_{n,c}^{(b)}=
-\frac{\operatorname{AvgPool}_{5\times5}(\lambda^{(b)}e_c^{(b)})_n}
-{\max\!\left(\operatorname{AvgPool}_{5\times5}(\lambda^{(b)})_n,10^{-4}\right)}.
+u_{n,c}=
+\frac{\operatorname{AvgPool}_{5\times5}(\lambda e_c)_n}
+{\max(\operatorname{AvgPool}_{5\times5}(\lambda)_n,10^{-4})},
+\qquad
+s_c=\frac13\sum_{k\in\{1,2,4\}}
+\operatorname{mean}(\operatorname{TopK}_k(u_c)).
 $$
 
-Pooling has stride 1 and padding 2. The lamp factor appears in both the evidence
-definition and the pooling weights, matching the implementation. Branches use
-top-$k$ means with **$k\in\{1,2,4\}$**, respectively. Their scores are averaged:
+Padding-only patches have zero lamp evidence and zero local scores. The lamp
+factor appears both in $e_c$ and in the local pooling weights, as implemented.
+Top-$k$ aggregation uses **one shared evidence map** at three scales.
+
+### Monotonic image-level readout
+
+Learned positive scales produce RR/RG logits and suppress NoR when either signal
+score increases:
 
 $$
-s_c=\frac{1}{3}\sum_{b=1}^{3}
-\operatorname{mean}\!\left(\operatorname{TopK}_{k_b}(u_c^{(b)})\right),
-\qquad c\in\{\mathrm{RR},\mathrm{RG}\}.
+\ell_c=\operatorname{softplus}(\alpha_c)s_c+b_c,
+\qquad c\in\{\mathrm{RR},\mathrm{RG}\},
 $$
 
-The branches have independent MLPs and attribute heads; they do not merely pool
-one shared evidence map at three scales. Exported maps average the three branches.
-
-### 4. Bounded scene paths and image classification
-
-RR and RG logits combine pooled evidence with learned scale and bias, plus a
-bounded CLS residual:
-
 $$
-\ell_c=a_cs_c+b_c+0.5\tanh\!\left(\operatorname{MLP}_{\mathrm{CLS}}(g)_c\right).
+\ell_{\mathrm{NoR}}=b_{\mathrm{NoR}}
+-\operatorname{softplus}(\beta_{\mathrm{RR}})s_{\mathrm{RR}}
+-\operatorname{softplus}(\beta_{\mathrm{RG}})s_{\mathrm{RG}}.
 $$
 
-NoR uses an evidence-conditioned base and a bounded scene residual. With
-$s=[s_{\mathrm{RR}},s_{\mathrm{RG}}]$ and a shared NoR MLP $f$:
-
-$$
-\ell_{\mathrm{NoR}}=f([0;s])+0.5\tanh\!\left(f([g;s])-f([0;s])\right).
-$$
-
-The direct scene residual is bounded in magnitude by 0.5 for each class.
-Scene information can also affect relevance upstream. The NoR MLP uses separate
-dropout draws for its two evaluations during training; evaluation is deterministic.
-Final probabilities are $\operatorname{softmax}([\ell_{\mathrm{RR}},\ell_{\mathrm{RG}},\ell_{\mathrm{NoR}}])$.
+Thus $\partial\ell_{\mathrm{NoR}}/\partial s_c<0$ by construction.
+Signal scales initialize to 2.5 and NoR scales to 2.0. Biases initialize to zero.
+Probabilities are $\operatorname{softmax}([\ell_{\mathrm{RR}},\ell_{\mathrm{RG}},\ell_{\mathrm{NoR}}])$.
+This constraint does not guarantee calibrated probabilities or high NoR recall.
 
 | Component | Parameters | Optimization |
 |:--|--:|:--|
 | DINOv3 ViT-S+/16 | 28,692,864 | Frozen |
-| Fusion, MIL branches, and scene paths | 489,475 | Trainable |
-| Total | 29,182,339 | Head only |
+| Shared fusion projection and normalization | 148,032 | Trainable |
+| Appearance trunk | 74,112 | Trainable |
+| Lamp/state/direction/pictogram heads | 4,053 | Trainable |
+| Base relevance / context correction | 13,313 / 25,857 | Trainable |
+| Image-level readout | 7 | Trainable |
+| **Complete head** | **265,374** | **Head only** |
+| **Total model** | **28,958,238** | |
 
-These counts describe one v5 model. The final official-test predictor averages
-the raw logits of the four city-fold EMA heads before softmax. Its inference
-implementation reuses the common frozen encoder and holds 1,957,900 head
-parameters. Individual checkpoint scores are reported alongside the ensemble;
-the ensemble is not a single model trained on the entire official training split.
+The head has 45.8% fewer parameters than the archived v5 head. The recorded C
+predictor is one fold-0 EMA head, rather than a four-fold ensemble.
+Implementation: [model.py](src/dinov3_global/model.py),
+[head.py](src/dinov3_global/head.py), and [pooling.py](src/dinov3_global/pooling.py).
 
-Implementation: [model.py](src/dinov3_global/model.py), [head.py](src/dinov3_global/head.py).
+## Training objective and optimization
 
-## Training objective
-
-Training uses two independently augmented, full-frame photometric views.
-Image-level cross-entropy is averaged across both views. Auxiliary token losses
-are computed for each branch on the first view and then averaged across branches.
-A symmetric KL penalty encourages consistency between image predictions:
+Two independently augmented views retain the complete scene. Image-level
+cross-entropy is averaged across the views; attribute supervision uses the
+first view. A symmetric KL term encourages prediction consistency:
 
 $$
-\mathcal L=\tfrac12(\mathcal L_{\mathrm{global}}^{(1)}+\mathcal L_{\mathrm{global}}^{(2)})
-+\tfrac13\sum_b\left(0.3\mathcal L_{\mathrm{lamp}}^{(b)}
-+0.2\mathcal L_{\mathrm{state}}^{(b)}+0.5\mathcal L_{\mathrm{rel}}^{(b)}
-+0.2\mathcal L_{\mathrm{dir}}^{(b)}\right)
-+\eta_t\mathcal L_{\mathrm{symKL}}.
+\mathcal{L}=\tfrac12(\mathcal{L}_{\mathrm{CE}}^{(1)}+\mathcal{L}_{\mathrm{CE}}^{(2)})
++0.3\mathcal{L}_{\mathrm{lamp}}+0.2\mathcal{L}_{\mathrm{state}}
++0.5\mathcal{L}_{\mathrm{rel}}+0.2\mathcal{L}_{\mathrm{dir}}
++0.1\mathcal{L}_{\mathrm{pictogram}}+\eta_t\mathcal{L}_{\mathrm{symKL}}.
 $$
 
-Global CE uses label smoothing 0.05 and training-time logit adjustment
-$\ell_c+0.35\log\pi_c$, where $\pi_c$ is the natural training-class frequency.
-Sampling uses replacement with per-example weight proportional to class
-frequency raised to $-0.75$. These are distinct operations.
+Global CE uses label smoothing 0.05 and inverse-square-root class-frequency
+weights, normalized to expected weight one under natural training frequencies.
+Sampling follows the natural image distribution, without logit adjustment.
+Lamp BCE uses positive weight 10. Relevance uses focal BCE ($\gamma=2$,
+positive weight 2), with separately normalized lamp/background masses 0.75/0.25.
+State CE uses inverse-square-root frequency weights and a 3× relevant-lamp
+multiplier. Pictogram CE uses inverse-square-root weights capped at 3.
+Direction CE is unweighted.
 
-Lamp BCE covers valid tokens with positive weight 10. State and direction CE
-cover annotated lamp tokens. State CE uses inverse-square-root frequency weights
-and a $3\times$ multiplier for relevant lamp tokens. Relevance uses focal BCE
-($\gamma=2$, positive weight 2 on lamps), combining separately normalized lamp
-and background losses with mass 0.75 and 0.25. Conflicting box overlaps and
-surrounding ignore bands are masked out. The KL coefficient increases linearly
-to 0.1 over the first three epochs.
+State, direction, pictogram, and lamp-region relevance losses normalize within
+lamp instances, then within images. Lamp detection and background relevance
+normalize over valid tokens within each image. Shared,
+agreeing patches contribute to each applicable instance. Conflicting attributes
+are masked independently; padding and boundary ignore bands are excluded.
+The KL coefficient ramps to 0.1 over three epochs. See
+[losses.py](src/dinov3_global/losses.py) and [preprocessing.py](src/dinov3_global/preprocessing.py).
 
-Photometric and sensor/weather augmentation preserves the full frame. It uses
-strength 0.8, clean-view probability 0.2, and minimum clean-image blend 0.35.
-Training also applies all-lamp erasure with probability 0.02, updating the image
-label and token targets consistently. There are no random geometric crops.
+Training letterboxing optionally zooms the complete image to a scale in
+[0.9, 1.0] with probability 0.5 and random placement. Photometric and
+sensor/weather augmentation uses strength 0.8, clean-view probability 0.2,
+and minimum clean-image blend 0.35. All-lamp erasure occurs with probability
+0.02 and updates labels and attribute targets. No geometric crop is used.
 
 | Setting | Default |
 |:--|:--|
 | Optimizer | AdamW, learning rate $6\times10^{-5}$, weight decay 0.05 |
-| Schedule | 12 epochs; 3 warm-up epochs, then cosine decay |
-| Batch | 4 images, accumulation 4; effective batch 16 |
-| Precision | Mixed precision on CUDA; float32 on CPU |
-| Gradient clipping | Norm 1.0 |
+| Schedule | 12 epochs, 3 warm-up epochs, then cosine decay |
+| Batch | 4 images, accumulation 4, effective batch 16 |
+| Precision / clipping | CUDA mixed precision; gradient norm 1.0 |
 | EMA | Decay 0.999 after every optimizer step |
-| Checkpoint selection | Highest validation mAP at temperature $T=1$; early stopping disabled |
+| New-run selection | Highest validation EMA mAP at T=1; earlier epoch wins ties |
+| Clean training probe | 1,024 fixed images; diagnostic only |
 
-See [losses.py](src/dinov3_global/losses.py), [augment.py](src/dinov3_global/augment.py),
-and [engine.py](src/dinov3_global/engine.py).
-
-## Repository structure
-
-```text
-configs/             Default scientific settings and audited runtime settings
-src/dinov3_global/   Encoder, v5 head, data, losses, training, and metrics
-scripts/             Data preparation, training, inference, and evaluation
-tests/               CPU tests; no encoder download required
-metadata/            Frozen folds, checkpoint hashes, labels, environment
-docs/                Data protocol, evaluation protocol, figures, results
-datasets/            Local datasets; excluded from Git
-runs/v5/             Local checkpoints, logs, and predictions; excluded from Git
-```
-
-## Installation
-
-Use Python **3.11 or later** and run commands from the repository root:
-
-```sh
-python -m pip install -e .
-```
-
-Install a PyTorch build appropriate for your CUDA environment using the
-[official installation instructions](https://pytorch.org/get-started/locally/).
-The tested software versions and GPU are recorded in
-[metadata/environment.json](metadata/environment.json).
-
-Access to the DINOv3 weights requires accepting their license on the model page
-and authenticating with `hf auth login`. Alternatively, set
-`backbone.local_ckpt` to a licensed local Hugging Face snapshot directory.
-Encoder weights, dataset images, and trained head checkpoints are not bundled
-in Git. The retained local EMA checkpoints and their SHA-256 hashes are listed in
-[metadata/checkpoints.json](metadata/checkpoints.json).
-
-## Data preparation
-
-Obtain DTLD under its dataset terms and place the native annotations in
-`datasets/DTLD/v2.0/`. Convert Bayer TIFFs and prepare the image dump:
-
-```sh
-python -m pip install -e ".[preprocessing]"
-python scripts/preprocessing/convert_dtld.py --raw datasets/DTLD --labels datasets/DTLD/v2.0 --out datasets/DTLD_jpg
-python scripts/prepare_dtld.py --src datasets/DTLD_jpg --dst datasets/DTLD_1280
-```
-
-The deterministic side crop is 114 pixels per side before bicubic resizing.
-The configuration distinguishes the crop already baked into the dump
-(`label_crop_sides: 114`) from any additional input crop (`crop_sides: 0`).
-See [docs/data.md](docs/data.md) for coordinate mapping, annotation policies,
-ATLAS provenance, and VZC audits.
-
-## Training and reproduction
-
-Reproduce the four city-disjoint folds using the frozen membership manifest and
-the runtime settings used for the retained runs. Choose a fresh output directory:
-
-```sh
-python scripts/cross_validate.py --fold-manifest metadata/dtld_city_folds.json --runtime-loader configs/runtime.json --out runs/v5/reproduction --audit-only
-python scripts/cross_validate.py --fold-manifest metadata/dtld_city_folds.json --runtime-loader configs/runtime.json --out runs/v5/reproduction
-```
-
-Add `--resume` to continue from saved epoch-boundary checkpoints. Fold seeds are
-0, 1, 2, and 3. The manifest checks frame membership, annotation checksums, class
-coverage, and absence of session overlap. The runtime file controls workers,
-prefetching, pinning, and CPU threads without altering the scientific settings.
-
-A separate training run uses a session-disjoint validation partition within the
-official DTLD training split:
-
-```sh
-python scripts/train.py --out runs/v5/train
-python scripts/train.py --out runs/v5/train --resume runs/v5/train/last.pt
-```
-
-`best.pt` contains the selected head and EMA parameters; `last.pt` additionally
-stores optimizer, mixed-precision scaler, and RNG state for resume. Inference
-loads EMA weights. The frozen encoder is loaded separately.
-
-## Inference and evaluation
-
-Predict an image directory, optionally exporting evidence overlays:
-
-```sh
-python scripts/infer.py --ckpt runs/v5/city_cv/fold0/best.pt --images path/to/images --out runs/v5/inference --overlays
-```
-
-Reproduce the final official DTLD test evaluation of the four retained
-checkpoints and their mean-logit ensemble in a fresh output directory:
-
-```sh
-python scripts/evaluate.py --ckpt runs/v5/city_cv/fold0/best.pt runs/v5/city_cv/fold1/best.pt runs/v5/city_cv/fold2/best.pt runs/v5/city_cv/fold3/best.pt --runtime-loader configs/runtime.json --out runs/v5/dtld_test_reproduction
-```
-
-Primary metrics always use raw logits at $T=1$. Optional `--calibrated` uses a
-previously fitted DTLD validation temperature; it never fits calibration on test
-or transfer images. Multiple `--ckpt` arguments to evaluation average raw logits
-before the final softmax. The evaluator saves individual and ensemble results,
-audits official membership and train/test overlap, and freezes checkpoint,
-data, source, and environment hashes before inference. The identical frozen
-encoder is shared across heads, with exact agreement checked against separate
-full-model forwards. Supplying one checkpoint evaluates a single head.
-
-ATLAS evaluation uses the fixed manual annotation snapshot:
-
-```sh
-python scripts/evaluate_ood.py --labels metadata/atlas_labels.json --images datasets/atlas_relevance_expanded --ckpt runs/v5/city_cv/fold0/best.pt --include-uncertain --out runs/v5/atlas
-```
-
-The retained ATLAS benchmark includes uncertain annotations; omitting
-`--include-uncertain` produces the separately defined certain-only diagnostic.
-For a new image collection, use `scripts/annotate_ood.py --images path/to/images`.
-
-Download and evaluate the pinned VZC-TLD release:
-
-```sh
-python scripts/download_vzc.py
-python scripts/evaluate_vzc.py --out runs/v5/vzc_reproduction
-```
-
-The VZC evaluator checks file hashes and category semantics, evaluates the four
-retained city-fold checkpoints plus their logit ensemble, and exports primary
-and sensitivity metrics. No VZC data trains the model or fits temperature scaling.
-Details are in [docs/evaluation.md](docs/evaluation.md).
-
-These inference examples use the retained checkpoint paths. To evaluate a new
-reproduction run, replace them with `runs/v5/reproduction/fold{0..3}/best.pt`,
-supplying all four paths to `evaluate_vzc.py --ckpt` for the same suite.
+The original C pilot used an additional v5-relative eligibility rule and failed
+it. Its epoch-5 diagnostic checkpoint was selected by validation mAP. New runs
+use the same C model and loss settings with independent validation-mAP selection;
+their protocol is distinct from the archived gated study. No historical weights
+or results were changed when C became the default.
 
 ## Recorded results
 
-All scores below are percentages at $T=1$. The official DTLD test reports the
-fixed four-head ensemble and the arithmetic mean of individual checkpoint
-metrics separately. The other rows report individual-checkpoint means. DTLD
-city validation contains 28,525 unique out-of-fold images; every checkpoint sees
-the same official-test or transfer images within its respective benchmark.
-mAP averages the three image-level class APs over RR, RG, and NoR.
+These are the existing **single fold-0, epoch-5 EMA** results at raw temperature
+**T=1**. C trained on 21,493 DTLD images and used 7,032 images from Dortmund,
+Kassel, and Fulda for validation. Its selected validation mAP is **69.37%**.
 
-| Evaluation / predictor | Images | AP RR | AP RG | AP NoR | mAP | Balanced accuracy | Accuracy | Macro F1 | ECE ↓ |
-|:--|--:|--:|--:|--:|--:|--:|--:|--:|--:|
-| **DTLD official test — ensemble** | **12,453** | **91.41** | **95.04** | **24.92** | **70.46** | **75.89** | **84.65** | **69.58** | **11.75** |
-| DTLD official test — individual mean | 12,453 | 90.11 | 94.40 | 21.17 | 68.56 | 73.75 | 81.85 | 66.95 | 9.83 |
-| DTLD city validation | 28,525 | 91.52 | 95.45 | 24.78 | 70.58 | 74.54 | 82.53 | 68.39 | 9.95 |
-| ATLAS transfer | 528 | 88.23 | 75.25 | 75.18 | 79.55 | 69.68 | 71.35 | 69.85 | 7.67 |
-| VZC published test split | 598 | 88.38 | 71.66 | 41.17 | 67.07 | 61.46 | 55.77 | 53.56 | 13.53 |
+| Dataset | Images | mAP | Balanced accuracy | Accuracy | Macro F1 | RR recall | RG recall | NoR recall |
+|:--|--:|--:|--:|--:|--:|--:|--:|--:|
+| DTLD official test | 12,453 | 70.11 | 68.76 | 88.76 | 70.04 | 86.07 | 94.69 | 25.52 |
+| ATLAS manual transfer benchmark | 528 | 86.84 | 76.12 | 74.62 | 71.97 | 85.71 | 90.53 | 52.13 |
+| VZC-TLD published test | 598 | 72.17 | 65.54 | 75.42 | 66.18 | 85.80 | 77.84 | 32.97 |
 
-Per-checkpoint scores, per-class precision/recall/F1, confusion matrices, NLL,
-Brier score, city/size slices, and sensitivity analyses are provided in
-[docs/results/README.md](docs/results/README.md).
-Rebuild the tables from local saved predictions with
-`python scripts/summarize_results.py`.
+All displayed scores are percentages. Full-precision metrics, per-class AP,
+precision/recall/F1, confusion matrices, slices, sensitivity analyses, and hashes
+are in [docs/results/](docs/results/README.md). The archived pre-pilot latency
+measurement on an RTX 5070 is **40.89 ms at batch 1** and **152.47 ms per batch
+of 4**, including JPEG preprocessing, transfers, forward pass, and CPU
+probabilities; see [efficiency.json](docs/results/efficiency.json).
 
-The final official-test evaluation covers all 12,453 frames with no missing or
-excluded images. Train/test image identities, sessions, and exact prepared-JPEG
-contents have zero overlap. Checkpoint selection uses city validation only;
-the ensemble, preprocessing, and $T=1$ policy were fixed before test inference.
-The [frozen test protocol](docs/results/dtld_test_protocol.json) and
-[artifact provenance](docs/results/dtld_test_provenance.json) identify the exact
-weights, data, source, environment, and verification used for this result.
+C is the chosen architecture for further development and paper presentation.
+The comparisons show a tradeoff: stronger signal recall and transfer ranking
+coexist with reduced NoR recall. C does not lead every metric, and all A–D pilots
+failed the original validation gates. ATLAS and VZC influenced development and
+architecture choice, so transfer scores are exploratory. Only fold 0 has been
+completed for C; no four-fold C result, full-training-split refit, confidence
+interval, or independent confirmatory architecture evaluation is claimed.
 
-The ensemble improves mAP and balanced accuracy over the individual-model mean
-by 1.90 and 2.14 percentage points, respectively, while ECE increases. NoR
-discrimination remains limited: ensemble NoR precision/recall are 22.33%/57.71%.
-The reported predictor uses the retained city-fold models; there is no full-training-split
-refit. Official-test cities also occur in the training split, whereas city
-validation holds out entire cities. ATLAS and VZC are exploratory transfer
-benchmarks inspected during architecture selection. Class prevalence and
-annotation policies differ across datasets, so their scores are not directly
-interchangeable. See [docs/evaluation.md](docs/evaluation.md) for the complete protocol.
+## Repository layout
 
-## Development
+```text
+configs/                Canonical C settings and execution-only loader settings
+src/dinov3_global/       Frozen encoder, shared head, pooling, data, losses, engine
+scripts/                Preparation, training, inference, evaluation, result exports
+tests/                  CPU regression tests; no encoder download required
+metadata/               Dataset membership, labels, checkpoint hashes, verification
+docs/assets/            Architecture figure
+docs/results/           Published C measurements and provenance
+docs/experiments/       Historical architectures, configurations, histories, results
+datasets/               Local licensed data; excluded from Git
+runs/                   Local weights, predictions, logs, and archived raw results
+```
 
-The DTLD-only recall/generalization study is implemented in
-[docs/generalization_study.md](docs/generalization_study.md), with four staged
-ablations, validation-gated checkpoint selection and a fixed promotion rule.
-Run `python -B -u scripts/run_generalization_study.py` and use `--resume` to
-continue the same study. Existing v5 and axial results remain the reference;
-the proposed changes require measured acceptance before promotion.
+Previous executable implementations and experiment runners are removed from
+the current tree. Their original source remains recoverable from Git commit
+`54a28b4`; [the archive index](docs/experiments/README.md) explains the records.
+
+## Installation and data
+
+Use Python **3.11+**. Install a PyTorch build suitable for your device, then:
 
 ```sh
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,preprocessing]"
+```
+
+The tested environment is recorded in [metadata/environment.json](metadata/environment.json).
+Access to DINOv3 weights requires accepting the model's license and authenticating
+with `hf auth login`, or setting `backbone.local_ckpt` to a licensed local snapshot.
+Weights and dataset images are excluded from Git. The C checkpoint is available
+locally at `runs/pretrained/experiment_c_fold0.pt`; this repository does not
+currently publish a checkpoint download.
+
+Obtain DTLD and place annotations under `datasets/DTLD/v2.0/`. Decode native
+Bayer TIFFs to full-resolution RGB JPEGs:
+
+```sh
+python scripts/preprocessing/convert_dtld.py --raw datasets/DTLD --labels datasets/DTLD/v2.0 --out datasets/DTLD_jpg
+```
+
+Training and inference letterbox the full-resolution JPEGs on demand.
+[docs/data.md](docs/data.md) defines coordinates, masks, split membership,
+manual ATLAS annotations, and VZC-TLD audits.
+
+## Training and reproduction
+
+Train C with a session-disjoint validation partition inside official DTLD train:
+
+```sh
+python scripts/train.py --out runs/train
+python scripts/train.py --out runs/train --resume runs/train/last.pt
+```
+
+To reproduce C's fold-0 membership and train a fresh head under the current
+selection protocol, audit the frozen city folds and run fold 0:
+
+```sh
+python scripts/cross_validate.py --fold-manifest metadata/dtld_city_folds.json --runtime-loader configs/runtime.json --out runs/city_cv --audit-only
+python scripts/cross_validate.py --fold-manifest metadata/dtld_city_folds.json --runtime-loader configs/runtime.json --out runs/city_cv --fold-indices 0
+```
+
+Omit `--fold-indices 0` to train all four folds with seeds 0–3. These additional
+C runs are future measurements. Add `--resume` to continue an existing run.
+`best.pt` stores the selected head/EMA; `last.pt` also stores optimizer, scaler,
+and RNG state. Old pilot histories retain their original configurations and
+source hashes and should not be resumed with the revised protocol.
+
+## Inference and evaluation
+
+Use the retained checkpoint, or replace its path with a new run's `best.pt`:
+
+```sh
+python scripts/infer.py --ckpt runs/pretrained/experiment_c_fold0.pt --images path/to/images --out runs/inference --overlays
+python scripts/evaluate.py --ckpt runs/pretrained/experiment_c_fold0.pt --runtime-loader configs/runtime.json --out runs/evaluations/dtld_test
+python scripts/evaluate_ood.py --labels metadata/atlas_labels.json --images datasets/atlas_relevance_expanded --ckpt runs/pretrained/experiment_c_fold0.pt --include-uncertain --out runs/evaluations/atlas
+python scripts/download_vzc.py
+python scripts/evaluate_vzc.py --ckpt runs/pretrained/experiment_c_fold0.pt --out runs/evaluations/vzc
+python scripts/summarize_results.py --dtld-test runs/evaluations/dtld_test --out runs/result_exports
+```
+
+Primary evaluation uses raw logits at T=1. Optional DTLD `--calibrated` uses a
+previously fitted validation temperature. Multiple compatible `--ckpt` arguments
+evaluate individual heads and their mean-logit ensemble; the reported C results
+above use one head. The DTLD evaluator freezes checkpoint/data/source hashes,
+audits complete official membership and train/test overlap, and verifies shared
+encoder inference against complete forwards. See [docs/evaluation.md](docs/evaluation.md).
+
+## Verification and attribution
+
+```sh
 python -m pytest
 ruff check src scripts tests
 ruff format --check src scripts tests
 ```
 
-Tests cover label priority, box-to-token geometry, loss masks, local pooling,
-scene bounds, augmentation consistency, frozen-encoder behavior, fold leakage,
-RNG resume, worker invariance, and metric semantics. GitHub Actions runs the CPU
-suite and style checks. Refactoring equivalence with the original v5 implementation
-is recorded in [metadata/refactor_verification.json](metadata/refactor_verification.json).
+With licensed local data and a CUDA device, `python scripts/smoke.py` verifies
+two-view training, EMA checkpoint loading, and exact epoch-boundary resume.
+[Cleanup verification](metadata/refactor_verification.json) records bitwise
+agreement with C predictions and gradients captured before this refactor.
 
-## References and license
-
-- Siméoni et al., **DINOv3**, 2025. [Paper](https://arxiv.org/abs/2508.10104).
-- DriveU Traffic Light Dataset: [native parser and dataset references](https://github.com/julimueller/dtld_parsing).
-- Trinci et al., **Color Is Not Enough: Dataset and Method for Identifying Relevant Traffic Lights in Driving Scenes**, IEEE T-ITS, 2026. [DOI](https://doi.org/10.1109/TITS.2025.3626165), [VZC dataset](https://huggingface.co/datasets/vzc-research-chapter/vzc-traffic-light-dataset).
-
-The repository retains its [AGPL-3.0 license](LICENSE). DINOv3 weights and each
-dataset have separate terms. The DTLD conversion helpers retain their upstream
-author attribution; see [docs/data.md](docs/data.md).
+Code is released under [AGPL-3.0](LICENSE). Backbone and dataset licenses govern
+their respective assets. DTLD parser helpers retain their upstream attribution.
+When reporting results, identify the checkpoint, split, label policy, and selection
+protocol and cite DINOv3 and the source datasets. Paper citation metadata should
+be added when the manuscript's authors and publication identifier are available.

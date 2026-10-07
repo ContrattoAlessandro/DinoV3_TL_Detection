@@ -1,0 +1,18 @@
+{
+  "scripts/cross_validate.py": "fb599683f113b5f8b24a36d52e9217e79b28226a9d2c135a8aabeefba6692773",
+  "src/dinov3_global/__init__.py": "e709e9e3034993ff4fd3322b96b9b15ae85a1bbb95238f96cf40551e1de20ab2",
+  "src/dinov3_global/augment.py": "72aa2d8a7e8f32fced3b96f9a5c4d0651974895425f131bbe40a963f0f3cd2d3",
+  "src/dinov3_global/backbone.py": "3af166df5f6cf2854f0f2e214d3c48404c1316dd60022c0462ed7942dcae2d26",
+  "src/dinov3_global/config.py": "32cf1cb7ce582e46c2a099ba60b61711c1426153069258e7189a7bd725fd2b14",
+  "src/dinov3_global/data.py": "58ac28fcfd6d4e3496bc9e91b80c66b2d10ff5a6be8342e614a288b345ce495e",
+  "src/dinov3_global/dtld.py": "5ca0972c3f20a81c5baf5535fdd0d9d3cf470bf159e790434c9f708ff158a098",
+  "src/dinov3_global/engine.py": "13e25c1335394201c76f53d8fa1839c1f2862f72d5c4743c4c59084575d6ce1d",
+  "src/dinov3_global/evaluation.py": "28801b887cc179228482fb1e9c619228dd1d53ff566c7d8980bb6046692edf4b",
+  "src/dinov3_global/head.py": "11b89e4fb084a44b759fb759c80d4b885128bc38e28fa0e2015a8497d870438c",
+  "src/dinov3_global/inference.py": "c9370c0dd75e2981e7cc60fb3db402dbd6c2fe48c20ecc60479b515ebabc2b3a",
+  "src/dinov3_global/losses.py": "95394119dea179438d899d7c66252bbe601fe2694b1e10254af6b9690d51ca67",
+  "src/dinov3_global/metrics.py": "52ed596054bcd339b248eba7243ea7c793fd1129ae20327b09ce6c6c2183d1ec",
+  "src/dinov3_global/model.py": "ff9733cec2ea50155dcdee96b843125413a2a5a3386e41197fcbab12cb1837d6",
+  "src/dinov3_global/runtime.py": "71e5bcfb6f17b889a424be75c44a3380b8c950497e77972295870669c404c250",
+  "src/dinov3_global/validation.py": "434b504960c67d000270bf339da1d2e2cd18f9d491f187a3b2518995be18b1ec"
+}

@@ -1,4 +1,4 @@
-"""Contracts for the public v5 package, frozen backbone, and metric reports."""
+"""Contracts for the public Experiment C package, frozen backbone, and metric reports."""
 
 from copy import deepcopy
 from pathlib import Path
@@ -20,12 +20,16 @@ ROOT = Path(__file__).resolve().parents[1]
     "section,key,value",
     [
         ("decoder", "head", "attention"),
+        ("decoder", "head", "mil"),
+        ("decoder", "spatial_context", {"mode": "axial"}),
         ("decoder", "pool", "topk"),
         ("decoder", "relevance_context", False),
         ("backbone", "mid_layer", None),
         ("backbone", "frozen", False),
         ("backbone", "use_cls", False),
         ("data", "global_classes", ["NoR", "RR", "RG"]),
+        ("data", "preprocessing", "legacy"),
+        ("data", "label_crop_sides", 114),
     ],
 )
 def test_default_configuration_rejects_incompatible_models(section, key, value):
@@ -62,7 +66,7 @@ def test_backbone_discards_registers_and_stays_frozen_during_training(monkeypatc
         return net
 
     monkeypatch.setattr(AutoModel, "from_pretrained", load)
-    model = DinoGlobal(dtype="float32", grid_hw=(2, 3), proj_dim=8, dropout=0, scene_dropout=0)
+    model = DinoGlobal(dtype="float32", grid_hw=(2, 3), proj_dim=8, dropout=0)
     model.train()
     assert model.training and model.head.training
     assert not model.backbone.training and not net.training

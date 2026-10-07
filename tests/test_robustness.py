@@ -11,7 +11,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from dinov3_global.augment import train_view
-from dinov3_global.head import TokenMILHead
+from dinov3_global.head import EvidenceMILHead
 from dinov3_global.losses import token_losses
 from scripts.annotate_ood import AnnotationStore
 from scripts.evaluate_ood import csv_logits, evaluate_labels, read_labels
@@ -50,48 +50,39 @@ def test_augmentation_blend_and_per_image(monkeypatch):
 
 def test_appearance_heads_do_not_see_absolute_position():
     torch.manual_seed(1)
-    head = TokenMILHead(in_dim=8, proj_dim=16, grid_hw=(3, 4), dropout=0, scene_dropout=0)
-    head.eval()
+    head = EvidenceMILHead(in_dim=8, proj_dim=16, grid_hw=(3, 4), dropout=0).eval()
+    with torch.no_grad():
+        head.rel_context[-1].weight.fill_(0.1)
     patches = torch.ones(1, 12, 8)
     _, aux = head(patches, torch.ones(1, 8))
-    for key in ("lamp_logit", "state_logit", "dir_logit"):
+    for key in ("lamp_logit", "state_logit", "dir_logit", "pictogram_logit"):
         value = aux["maps"][key]
         assert torch.allclose(value[:, 0:1].expand_as(value), value)
     assert not torch.allclose(aux["maps"]["rel_logit"][:, :1].expand(1, 12), aux["maps"]["rel_logit"])
 
 
-def test_scene_prior_is_bounded_and_all_branches_receive_gradients():
-    head = TokenMILHead(
-        in_dim=8, proj_dim=16, grid_hw=(3, 4), dropout=0, scene_dropout=0, scene_prior_bound=0.5
-    )
+def test_context_is_bounded_and_shared_predictors_receive_gradients():
+    head = EvidenceMILHead(in_dim=8, proj_dim=16, grid_hw=(3, 4), dropout=0)
     with torch.no_grad():
-        head.cls_mod[-1].bias.fill_(1000)
-    patches, cls = torch.randn(2, 12, 8), torch.randn(2, 8)
-    logits, aux = head(patches, cls)
-    s = torch.stack(
-        [
-            torch.stack(
-                [
-                    br.pooled(mp["rr"].reshape(2, -1), mp["lamp"]),
-                    br.pooled(mp["rg"].reshape(2, -1), mp["lamp"]),
-                ],
-                1,
-            )
-            for br, mp in zip(head.branches, aux["branch_maps"])
-        ]
-    ).mean(0)
-    prior = logits[:, :2] - s * head.scale - head.bias
-    assert (prior.abs() <= 0.50001).all()
+        head.rel_context[-1].bias.fill_(1000)
+    logits, aux = head(torch.randn(2, 12, 8), torch.randn(2, 8))
+    assert (aux["relevance_correction"].abs() <= 1).all()
     lamp = torch.zeros(2, 3, 4)
     lamp[:, 0, 0] = 1
-    valid = torch.ones_like(lamp, dtype=torch.bool)
-    losses = [
-        token_losses(mp, lamp, valid, lamp.long() * 2, lamp, rel_lamp_weight=0.75, rel_pos_weight=2)["total"]
-        for mp in aux["branch_maps"]
-    ]
-    (torch.stack(losses).mean() + logits.square().mean()).backward()
-    assert all(br.rel.weight.grad.abs().sum() > 0 for br in head.branches)
-    assert head.rel_context.weight.grad.abs().sum() > 0
+    loss = token_losses(
+        aux["maps"],
+        lamp,
+        torch.ones_like(lamp, dtype=torch.bool),
+        lamp.long() * 2,
+        lamp,
+        w_dir=0.2,
+        dir_tgt=lamp.long(),
+        w_pictogram=0.1,
+        pictogram_tgt=lamp.long(),
+    )["total"]
+    (loss + logits.square().mean()).backward()
+    for module in (head.lamp, head.state, head.dir, head.pictogram, head.rel_base[0]):
+        assert module.weight.grad.abs().sum() > 0
 
 
 def test_hard_lamp_loss_is_not_diluted_by_background_count():
@@ -119,19 +110,6 @@ def test_hard_lamp_loss_is_not_diluted_by_background_count():
         )["total"]
 
     assert torch.allclose(loss(10), loss(1000))
-
-
-def test_nor_scene_contribution_is_bounded():
-    head = TokenMILHead(
-        in_dim=8, proj_dim=16, grid_hw=(3, 4), dropout=0, scene_dropout=0, nor_scene_bound=0.5
-    )
-    head.eval()
-    captured = []
-    handle = head.nor_head.register_forward_hook(lambda m, a, out: captured.append(out.detach()))
-    logits, _ = head(torch.randn(2, 12, 8), torch.randn(2, 8) * 100)
-    handle.remove()
-    assert len(captured) == 2
-    assert ((logits[:, 2] - captured[1].squeeze(-1)).abs() <= 0.50001).all()
 
 
 def make_store(tmp_path):

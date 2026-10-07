@@ -1,4 +1,4 @@
-"""Training, EMA validation, checkpoint loading, and reproducible resume for v5."""
+"""Training, EMA validation, checkpoint loading, and reproducible resume for the evidence MIL architecture."""
 
 from __future__ import annotations
 
@@ -28,12 +28,11 @@ from .losses import consistency_kl, global_loss, token_losses
 from .model import DinoGlobal
 from .config import validate_config
 from .preprocessing import batch_model_kwargs
-from .study import selection_key
 
 
 def dataset_options(cfg):
     return dict(
-        preprocessing=cfg["data"].get("preprocessing", "legacy"),
+        preprocessing=cfg["data"].get("preprocessing", "letterbox"),
         zoom_out_prob=cfg.get("augment", {}).get("zoom_out_prob", 0),
         zoom_out_min=cfg.get("augment", {}).get("zoom_out_min", 0.9),
     )
@@ -85,9 +84,8 @@ def _build_model(cfg, dev, repo_root="."):
         "dropout",
         "topk",
         "logit_scale",
-        "scene_dropout",
-        "scene_prior_bound",
-        "nor_scene_bound",
+        "context_dropout",
+        "context_bound",
     )
     return DinoGlobal(
         hf_id=backbone["hf_id"],
@@ -96,13 +94,7 @@ def _build_model(cfg, dev, repo_root="."):
         dtype=backbone.get("dtype", "float16") if dev.type == "cuda" else "float32",
         grid_hw=(h // 16, w // 16),
         mid_layer=6,
-        spatial_context=decoder.get("spatial_context"),
         head_kind=decoder["head"],
-        **(
-            {k: decoder[k] for k in ("context_dropout", "context_bound") if k in decoder}
-            if decoder["head"] == "v7_evidence"
-            else {}
-        ),
         **{k: decoder[k] for k in keys},
     ).to(dev)
 
@@ -118,8 +110,8 @@ def _lr_of(ep: int, warmup: int, epochs: int, base: float) -> float:
 def _make_sampler(ds: DTLDGlobalDataset, mode: str) -> Optional[WeightedRandomSampler]:
     """Sample with replacement using per-example weight frequency**(-p).
 
-    The default pow075 gives each class aggregate sampling mass proportional
-    to frequency**0.25. Natural training frequencies still define logit adjustment.
+    The default C protocol disables replacement sampling (mode="none").
+    Optional power sampling assigns class mass proportional to frequency**(1-p).
     """
     if mode in (None, "none", ""):
         return None
@@ -147,11 +139,11 @@ def build_loaders(cfg: dict, repo_root: str = "."):
     tr, va, info = build_train_val_datasets(
         ld,
         ir,
-        crop_sides=d.get("crop_sides", 114),
-        label_crop_sides=d.get("label_crop_sides", 114),
+        crop_sides=d.get("crop_sides", 0),
+        label_crop_sides=d.get("label_crop_sides", 0),
         target_hw=(th, tw),
         label_policy=d.get("label_policy", "map_to_nor"),
-        policy_weight=float(d.get("policy_weight", 0.3)),
+        policy_weight=float(d.get("policy_weight", 1.0)),
         val_frac=float(d.get("val_frac", 0.15)),
         val_seed=int(d.get("val_seed", 0)),
         **dataset_options(cfg),
@@ -186,8 +178,8 @@ def build_test_loader(cfg: dict, repo_root: str = "."):
         ir,
         "test",
         train=False,
-        crop_sides=d.get("crop_sides", 114),
-        label_crop_sides=d.get("label_crop_sides", 114),
+        crop_sides=d.get("crop_sides", 0),
+        label_crop_sides=d.get("label_crop_sides", 0),
         target_hw=(th, tw),
         label_policy=d.get("label_policy", "map_to_nor"),
         **dataset_options(cfg),
@@ -229,7 +221,7 @@ def _to_device(batch: dict, dev: torch.device) -> torch.Tensor:
 
 
 def load_model(ckpt_path, repo_root, dev):
-    """Load a v5 checkpoint strictly; use EMA weights for inference."""
+    """Load an Experiment C checkpoint strictly; use EMA weights for inference."""
     state = torch.load(ckpt_path, map_location=dev, weights_only=True)
     cfg = state["cfg"]
     validate_config(cfg)
@@ -427,8 +419,6 @@ def train(
         stale_init=stale_init,
         pseudo_flags=_pseudo_flags(va_ds),
         rng_state=sd.get("rng_state") if resume else None,
-        best_selection_key=sd.get("best_selection_key") if resume else None,
-        best_diagnostic_map=sd.get("best_diagnostic_map", -1) if resume else -1,
     )
 
 
@@ -448,8 +438,6 @@ def fit(
     pseudo_flags=None,
     stale_init: int = 0,
     rng_state=None,
-    best_selection_key=None,
-    best_diagnostic_map=-1.0,
 ):
     """Training loop shared by ordinary training and city cross-validation."""
     os.makedirs(out_dir, exist_ok=True)
@@ -523,13 +511,9 @@ def fit(
     stale = stale_init
     best_map, best_state = best_init, None
     selection_metric = o.get("early_stop_metric", "mAP")
-    if selection_metric not in ("mAP", "worst_city_mAP", "acc_bal", "signal_recall"):
-        raise ValueError(f"unsupported early_stop_metric {selection_metric!r}")
-    baseline = o.get("selection_baseline")
-    if selection_metric == "signal_recall" and baseline is None:
-        raise ValueError("Recall selection needs a matching DTLD validation baseline")
+    if selection_metric != "mAP":
+        raise ValueError("New Experiment C runs select checkpoints by validation mAP")
     probe_loader = clean_probe_loader(tl, int(o.get("clean_probe_size", 0)), int(o.get("seed", 0)), out_dir)
-    best_key = tuple(best_selection_key) if best_selection_key is not None else None
     if dev.type == "cuda":
         torch.backends.cudnn.benchmark = True
 
@@ -729,19 +713,12 @@ def fit(
         met["temperature"] = T  # divide logits by T for calibrated probs
         met["ece_calibrated"] = rep_cal["metrics"]["ece"]
 
-        if selection_metric == "signal_recall":
-            key = selection_key(rep, baseline, ep + 1)
-            score = key[0] if key is not None else -1.0
-            improved = key is not None and (best_key is None or key > best_key)
-        else:
-            key = None
-            score = worst_city if selection_metric == "worst_city_mAP" else met[selection_metric]
-            improved = score > best_map
+        score = met["mAP"]
+        improved = score > best_map
         if not math.isfinite(score):
             raise ValueError(f"selection metric {selection_metric} is undefined on validation")
         if improved:
             best_map = score
-            best_key = key
             stale = 0
         else:
             stale += 1
@@ -757,13 +734,7 @@ def fit(
             "best_score": best_map,
             "selection_metric": selection_metric,
             "stale_epochs": stale,
-            "best_selection_key": best_key,
-            "selection_eligible": key is not None if selection_metric == "signal_recall" else True,
-            "best_diagnostic_map": max(best_diagnostic_map, met["mAP"]),
         }
-        if selection_metric == "signal_recall" and met["mAP"] > best_diagnostic_map:
-            best_diagnostic_map = met["mAP"]
-            torch.save(state, os.path.join(out_dir, "best_unconstrained.pt"))
         if improved:
             best_state = state
             torch.save(state, os.path.join(out_dir, "best.pt"))
@@ -781,7 +752,6 @@ def fit(
                             **{k: v for k, v in met.items() if isinstance(v, (int, float))},
                             "worst_city_mAP": worst_city,
                             "selection_score": score,
-                            "selection_eligible": state["selection_eligible"],
                             "training_losses": {k: v / max(nbatch, 1) for k, v in tot.items()},
                             "attribute_losses": {k: v / max(nbatch, 1) for k, v in components.items()},
                             "clean_probe": to_jsonable(probe_report),

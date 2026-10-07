@@ -1,10 +1,10 @@
 """Global classification, attribute supervision, and two-view consistency.
 
-Global CE uses label smoothing and training-time logit adjustment from natural
-class frequencies. Lamp and relevance losses cover valid tokens; state and
-direction CE cover annotated lamp tokens. Relevance focal loss balances lamp
-tokens against background separately. Symmetric KL compares two photometric
-views. See configs/default.yaml for the retained v5 coefficients.
+Global CE supports label smoothing and optional logit adjustment. Experiment C
+uses inverse-square-root class weights without logit adjustment. Lamp detection
+covers valid tokens; state, direction, and pictogram CE cover annotated lamps.
+Relevance focal loss balances lamp instances against background separately.
+Symmetric KL compares two full-frame views. See configs/default.yaml for settings.
 """
 
 from __future__ import annotations

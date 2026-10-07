@@ -2,46 +2,53 @@
 
 ## DTLD
 
-The default data source is DTLD v2.0. Obtain the raw images and annotations
-through the [dataset's native parser repository](https://github.com/julimueller/dtld_parsing)
-under the applicable data terms. The expected local layout is:
+Use DTLD v2.0 native annotations and full-resolution RGB images. Obtain the data
+under its terms through the [native parser repository](https://github.com/julimueller/dtld_parsing).
+The expected local layout is:
 
 ```text
 datasets/
-  DTLD/
-    v2.0/DTLD_train.json
-    v2.0/DTLD_test.json
-    ... native city/session image directories ...
+  DTLD/v2.0/DTLD_train.json
+  DTLD/v2.0/DTLD_test.json
+  DTLD/... native city/session Bayer TIFFs ...
   DTLD_jpg/train/*.jpg
   DTLD_jpg/test/*.jpg
-  DTLD_1280/train/*.jpg
-  DTLD_1280/test/*.jpg
 ```
 
-Run `scripts/preprocessing/convert_dtld.py` to decode the native Bayer TIFFs
-through the DTLD parser. It writes RGB JPEGs and skips existing files unless
-`--overwrite` is explicitly supplied. `scripts/prepare_dtld.py` crops 114 pixels
-from both sides of the original 2048×1024 image, resizes to 1280×720 with bicubic
-interpolation, and writes JPEGs at quality 95. The saved image dump is the input
-used by the retained training runs.
+`scripts/preprocessing/convert_dtld.py` decodes Bayer TIFFs to full-resolution RGB
+JPEGs through the attributed DTLD parser. No side-cropped dump is required for C.
+Both `crop_sides` and `label_crop_sides` are zero in the default configuration.
 
-Annotations remain in the native coordinate system. For an original coordinate
-$(x,y)$, the prepared-image coordinate is
+### Full-frame coordinates and masks
+
+Images and boxes share one deterministic letterbox transform. With source size
+$(H,W)$ and target $(H_t,W_t)=(720,1280)$, scale by
+$s=\min(W_t/W,H_t/H)$, round the resized dimensions to $(H_r,W_r)$,
+then center at integer offset $(o_y,o_x)$:
 
 $$
-x'=\frac{x-114}{2048-228}\,1280,\qquad y'=\frac{y}{1024}\,720.
+x'=x\,W_r/W+o_x,\qquad y'=y\,H_r/H+o_y.
 $$
 
-Boxes are clipped to the valid image region and rasterized onto a 45×80 grid.
-The implementation preserves tiny boxes that would otherwise disappear at
-patch resolution. Overlapping boxes with conflicting attributes are masked out
-of token supervision. A one-patch surrounding ignore band prevents uncertain
-box boundaries from becoming background negatives, while preserving all valid
-positive tokens.
+During training, an optional zoom factor in [0.9,1.0] reduces the scale and
+randomizes placement while retaining the entire original frame. At inference,
+the transform is centered with zoom 1.0. Bicubic interpolation and RGB padding
+(124,116,104) are shared by dataset and folder inference.
 
-`crop_sides: 0` means there is no additional input crop of the prepared JPEGs.
-`label_crop_sides: 114` records the crop already baked into those images.
-Changing one without the other can misalign image pixels and token targets.
+The 16-pixel patches form a 45×80 grid. A patch is content-valid if it intersects
+the resized image; padding-only patches are excluded. Geometry uses content-relative
+centers $(x,y)$, clipped to [0,1], and is encoded as $(x,y,2x-1,1-y)$.
+Tiny lamp boxes receive at least one valid token when intersecting the content.
+
+Lampness is the union of box supports. State, relevance, direction, and pictogram
+have independent conflict masks; disagreement in one attribute does not discard
+the others. A one-patch ignore band limits uncertain boundary background labels.
+State, direction, pictogram, and lamp-region relevance losses average each lamp
+instance and then each image, so large lamps do not dominate these attributes.
+Lamp detection and background relevance average valid tokens within each image.
+Agreeing overlapping boxes retain contributions
+for each instance. Training all-lamp erasure clears corresponding targets and
+updates the image label to NoR.
 
 Native housing directions are back/front/left/right. State labels are
 green/off/red/red-yellow/unknown/yellow. The label priority is relevant
@@ -58,11 +65,11 @@ or per-epoch checkpoint selection.
 The official test split contains **12,453 images**: 4,359 RR, 7,569 RG, and
 525 NoR, including 213 NoR frames with relevant off/unknown lamps only. All
 native test entries are evaluated; no missing images or invalid-frame exclusions
-occur. The prepared train/test dumps have zero shared image identities, shared
+occur. The audited RGB train/test dumps have zero shared image identities, shared
 sessions, or exact JPEG duplicates. The audit covers 1,478 training sessions and
 632 test sessions, with no exact duplicates within either split. Annotation and
 ordered membership SHA-256 hashes are recorded in the
-[final test protocol](results/dtld_test_protocol.json). The audit hashes the
+[frozen diagnostic plan](experiments/diagnostics/plan.json). The audit hashes the
 prepared JPEG bytes, rather than asserting equivalence of every possible
 conversion of the native TIFFs.
 Session groups are the native `city/route/timestamp` folders parsed by `_seq_of`.

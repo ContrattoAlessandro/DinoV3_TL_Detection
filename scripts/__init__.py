@@ -1,1 +1,1 @@
-"""Repository entry points for v5 training, preparation, and evaluation."""
+"""Repository entry points for evidence MIL training, preparation, and evaluation."""

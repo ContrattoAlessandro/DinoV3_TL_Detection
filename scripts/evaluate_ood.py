@@ -152,7 +152,7 @@ def main():
     ap.add_argument("--include-uncertain", action="store_true")
     ap.add_argument("--crop-sides", type=int, default=0)
     ap.add_argument("--device")
-    ap.add_argument("--out", type=Path, default=REPO / "runs/v5/ood")
+    ap.add_argument("--out", type=Path, default=REPO / "runs/ood")
     args = ap.parse_args()
     entries, excluded = read_labels(args.labels, args.images, args.include_uncertain)
     logits = (

@@ -1,68 +1,139 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="530" viewBox="0 0 1200 530" role="img" aria-labelledby="title description">
-  <title id="title">DinoGlobal-MIL v5 architecture</title>
-  <desc id="description">A frozen DINOv3 encoder supplies fused layer-six and final patch features and a scene CLS vector. Three independent trainable attribute branches form relevance-weighted RR and RG evidence, then pool locally at top-k scales one, two, and four. Averaged scores and bounded scene residuals produce RR, RG, and NoR logits.</desc>
-  <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-      <path d="M0,0 L8,4 L0,8" fill="#475569" />
-    </marker>
-  </defs>
-  <rect width="1200" height="530" rx="16" fill="#ffffff" />
-  <text x="30" y="38" class="title" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-weight="700" font-size="23">DinoGlobal-MIL · scene-conditioned local evidence</text>
-  <rect x="22" y="78" width="292" height="203" rx="14" fill="#eff6ff" stroke="#93c5fd" />
-  <text x="42" y="104" class="label" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-weight="700" font-size="16">Frozen encoder</text>
-  <rect x="50" y="122" width="238" height="56" rx="8" fill="#fff" stroke="#94a3b8" />
-  <text x="169" y="145" text-anchor="middle" class="label" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-weight="700" font-size="16">RGB image · 720 × 1280</text>
-  <text x="169" y="165" text-anchor="middle" class="small" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-size="13">ImageNet normalization</text>
-  <path d="M169 178 V198" class="line" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
-  <rect x="50" y="200" width="238" height="69" rx="8" fill="#dbeafe" stroke="#60a5fa" />
-  <text x="169" y="225" text-anchor="middle" class="label" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-weight="700" font-size="16">DINOv3 ViT-S+/16</text>
-  <text x="169" y="246" text-anchor="middle" class="small" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-size="13">384 dimensions · layer 6 + final</text>
-  <path d="M169 269 V290" class="line" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
-  <rect x="50" y="292" width="238" height="108" rx="8" fill="#dcfce7" stroke="#4ade80" />
-  <text x="169" y="317" text-anchor="middle" class="label" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-weight="700" font-size="15">Trainable fusion projection</text>
-  <text x="169" y="340" text-anchor="middle" class="small" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-size="13">[final; layer 6] → 768 → 192 + LN</text>
-  <text x="169" y="364" text-anchor="middle" class="small" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-size="13">3,600 patch vectors h · one CLS g</text>
-  <text x="169" y="385" text-anchor="middle" class="small" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-size="13">Four register tokens discarded</text>
-  <rect x="340" y="78" width="543" height="350" rx="14" fill="#f0fdf4" stroke="#86efac" />
-  <text x="360" y="104" class="label" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-weight="700" font-size="16">Trainable MIL head · three independent branches</text>
-  <path d="M288 340 H338 V150 H362" class="line" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
-  <rect x="365" y="122" width="245" height="61" rx="8" fill="#dcfce7" stroke="#4ade80" />
-  <text x="487" y="146" text-anchor="middle" class="label" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-weight="700" font-size="16">Branch MLP · 192 → 192 → 192</text>
-  <text x="487" y="168" text-anchor="middle" class="small" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-size="13">GELU · dropout 0.2</text>
-  <path d="M487 183 V200" class="line" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
-  <rect x="365" y="202" width="245" height="75" rx="8" fill="#fff" stroke="#94a3b8" />
-  <text x="487" y="226" text-anchor="middle" class="label" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-weight="700" font-size="14.8">Lamp · state · direction · relevance</text>
-  <text x="487" y="247" text-anchor="middle" class="small" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-size="10.9">Relevance sees g, position, geometry, direction</text>
-  <text x="487" y="266" text-anchor="middle" class="small" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-size="13">Attribute supervision during training</text>
-  <path d="M610 239 H636" class="line" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
-  <rect x="639" y="202" width="216" height="75" rx="8" fill="#fff7ed" stroke="#fb923c" />
-  <text x="747" y="226" text-anchor="middle" class="label" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-weight="700" font-size="16">RR / RG evidence</text>
-  <text x="747" y="248" text-anchor="middle" class="small" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-size="13">lamp × relevance × state probability</text>
-  <text x="747" y="267" text-anchor="middle" class="small" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-size="13">45 × 80 spatial grid</text>
-  <path d="M747 277 V296" class="line" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
-  <rect x="639" y="299" width="216" height="87" rx="8" fill="#ffedd5" stroke="#fb923c" />
-  <text x="747" y="323" text-anchor="middle" class="label" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-weight="700" font-size="16">Local multi-scale pooling</text>
-  <text x="747" y="344" text-anchor="middle" class="small" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-size="13">5 × 5 lamp-weighted mean</text>
-  <text x="747" y="364" text-anchor="middle" class="small" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-size="13">Branch top-k: 1, 2, 4 → average</text>
-  <text x="747" y="380" text-anchor="middle" class="small" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-size="13">s = [RR evidence, RG evidence]</text>
-  <path d="M288 370 H328 V456 H928 V288" class="context" fill="none" stroke="#7c3aed" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="6 4" />
-  <path d="M487 456 V280" class="context" fill="none" stroke="#7c3aed" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="6 4" />
-  <text x="353" y="448" class="small" fill="#152238" font-family="Arial, Helvetica, sans-serif" font-size="13">CLS scene g · per-image dropout 0.3 during training</text>
-  <rect x="911" y="122" width="267" height="288" rx="14" fill="#faf5ff" stroke="#c4b5fd" />
-  <text x="1044" y="148" text-anchor="middle" class="label" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-weight="700" font-size="16">Image classification</text>
-  <path d="M855 343 H900 V209 H933" class="line" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
-  <rect x="936" y="171" width="217" height="70" rx="8" fill="#fff" stroke="#a78bfa" />
-  <text x="1044" y="195" text-anchor="middle" class="label" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-weight="700" font-size="16">RR / RG logits</text>
-  <text x="1044" y="216" text-anchor="middle" class="small" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-size="13">a × s + b + 0.5 tanh(CLS MLP)</text>
-  <path d="M900 343 V278 H933" class="line" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
-  <rect x="936" y="254" width="217" height="72" rx="8" fill="#fff" stroke="#a78bfa" />
-  <text x="1044" y="278" text-anchor="middle" class="label" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-weight="700" font-size="16">NoR logit</text>
-  <text x="1044" y="299" text-anchor="middle" class="small" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-size="11.0">Evidence base + bounded scene residual</text>
-  <text x="1044" y="317" text-anchor="middle" class="small" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-size="13">f([0;s]) + 0.5 tanh(f([g;s]) − f([0;s]))</text>
-  <path d="M1044 326 V345" class="line" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
-  <text x="1044" y="369" text-anchor="middle" class="label" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-weight="700" font-size="16">Softmax → RR / RG / NoR</text>
-  <text x="1044" y="391" text-anchor="middle" class="small" font-family="Arial, Helvetica, sans-serif" fill="#152238" font-size="13">Image pixels only at inference</text>
-  <path d="M928 288 V221 H934" class="context" fill="none" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)" />
-  <path d="M928 288 H934" class="context" fill="none" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)" />
-  <text x="30" y="496" class="note" font-family="Arial, Helvetica, sans-serif" fill="#475569" font-size="14">28,692,864 frozen encoder parameters · 489,475 trainable head parameters · EMA for inference</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="900" viewBox="0 0 1240 900">
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#425466"/></marker>
+  <style>
+    text {font-family: Arial, Helvetica, sans-serif; fill:#172b4d}
+    .title {font-size:28px;font-weight:700}
+    .subtitle {font-size:17px;fill:#526577}
+    .heading {font-size:19px;font-weight:700}
+    .body {font-size:16px}
+    .small {font-size:14px;fill:#526577}
+    .box {stroke:#9ab2c8;stroke-width:1.5;rx:12;fill:#edf5ff}
+    .frozen {fill:#f1f3f5;stroke:#a7b0b9}
+    .context {fill:#eef8f3;stroke:#84b69b}
+    .data {fill:#ffffff;stroke:#a7b0b9}
+    .path {fill:none;stroke:#425466;stroke-width:2}
+    .label {font-size:14px;fill:#3f5669}
+  </style>
+</defs>
+<rect width="1240" height="900" fill="white"/>
+<text x="40" y="44" class="title">DinoGlobal-MIL · Shared attribute evidence architecture</text>
+<text x="40" y="73" class="subtitle">Experiment C | Frozen DINOv3 encoder + 265,374 trainable head parameters | RGB-only inference</text>
+
+<rect x="40" y="115" width="220" height="140" class="box data"/>
+<text x="60" y="146" class="heading">Full-frame RGB</text>
+<text x="60" y="178" class="body">720 × 1280 letterbox</text>
+<text x="60" y="204" class="body">Content mask + geometry</text>
+<text x="60" y="233" class="small">ImageNet normalization</text>
+
+<rect x="315" y="115" width="300" height="140" class="box frozen"/>
+<text x="335" y="146" class="heading">Frozen DINOv3 ViT-S+/16</text>
+<text x="335" y="178" class="body">Layer 6 + final: 384 + 384</text>
+<text x="335" y="204" class="body">45 × 80 patches + CLS</text>
+<text x="335" y="233" class="small">Discard 4 register tokens</text>
+
+<rect x="670" y="115" width="215" height="140" class="box"/>
+<text x="690" y="146" class="heading">Shared fusion</text>
+<text x="690" y="178" class="body">[final ; layer 6]</text>
+<text x="690" y="204" class="body">Linear 768 → 192</text>
+<text x="690" y="233" class="small">LayerNorm → h, g</text>
+
+<rect x="945" y="115" width="255" height="140" class="box"/>
+<text x="965" y="146" class="heading">Appearance trunk</text>
+<text x="965" y="178" class="body">192 → 192 → 192</text>
+<text x="965" y="204" class="body">GELU + dropout 0.2</text>
+<text x="965" y="233" class="small">One shared representation z</text>
+<path d="M260 185 H315" class="path"/><path d="M615 185 H670" class="path"/><path d="M885 185 H945" class="path"/>
+
+<rect x="945" y="330" width="255" height="195" class="box"/>
+<text x="965" y="362" class="heading">Attribute predictors</text>
+<text x="965" y="394" class="body">Lamp presence: sigmoid</text>
+<text x="965" y="421" class="body">State: 6-way softmax</text>
+<text x="965" y="448" class="body">Direction: 4-way softmax</text>
+<text x="965" y="475" class="body">Pictogram: 10-way softmax</text>
+<text x="965" y="507" class="small">Appearance-only inputs</text>
+<path d="M1070 255 V330" class="path"/>
+
+<rect x="645" y="330" width="240" height="120" class="box"/>
+<text x="665" y="362" class="heading">Base relevance</text>
+<text x="665" y="394" class="body">a = [z ; direction ; pictogram]</text>
+<text x="665" y="426" class="body">MLP: 206 → 64 → 1</text>
+<path d="M945 392 H885" class="path"/>
+<path d="M990 255 V292 H765 V330" class="path"/>
+<text x="858" y="286" class="label">z</text>
+
+<rect x="355" y="360" width="240" height="165" class="box context"/>
+<text x="375" y="393" class="heading">Context correction</text>
+<text x="375" y="425" class="body">[a ; geometry ; scene g]</text>
+<text x="375" y="454" class="body">MLP: 402 → 64 → 1</text>
+<text x="375" y="481" class="body">tanh bound: ±1 logit</text>
+<text x="375" y="509" class="small">Zero-initialized final layer</text>
+<path d="M710 255 V303 H475 V360" class="path"/>
+<text x="508" y="296" class="label">scene g</text>
+<path d="M645 389 H622 V426 H595" class="path"/>
+<text x="604" y="370" class="label">a</text>
+
+<rect x="40" y="370" width="265" height="155" class="box data"/>
+<text x="60" y="402" class="heading">Content geometry</text>
+<text x="60" y="435" class="body">(x, y, 2x − 1, 1 − y)</text>
+<text x="60" y="466" class="body">Scene + geometry dropout</text>
+<text x="60" y="496" class="small">p = 0.5 per training image</text>
+<path d="M305 445 H355" class="path"/>
+
+<rect x="645" y="495" width="240" height="100" class="box context"/>
+<text x="665" y="529" class="heading">Relevance probability r</text>
+<text x="665" y="563" class="body">sigmoid(base + correction)</text>
+<path d="M795 450 V495" class="path"/>
+<path d="M595 501 H620 V547 H645" class="path"/>
+
+<rect x="945" y="650" width="255" height="140" class="box"/>
+<text x="965" y="682" class="heading">Signal evidence</text>
+<text x="965" y="715" class="body">RR = lamp × r × P(stop)</text>
+<text x="965" y="746" class="body">RG = lamp × r × P(green)</text>
+<text x="965" y="773" class="small">stop = red / yellow / red-yellow</text>
+<path d="M1080 525 V650" class="path"/>
+<text x="1088" y="603" class="label">lamp, state</text>
+<path d="M885 548 H916 V713 H945" class="path"/>
+<text x="922" y="623" class="label">r</text>
+
+<rect x="645" y="650" width="240" height="140" class="box"/>
+<text x="665" y="682" class="heading">Local multi-scale MIL</text>
+<text x="665" y="715" class="body">Lamp-weighted 5 × 5 mean</text>
+<text x="665" y="746" class="body">Top-k means: k = 1, 2, 4</text>
+<text x="665" y="773" class="small">Content mask; mean of scales</text>
+<path d="M945 720 H885" class="path"/>
+
+<rect x="320" y="650" width="265" height="140" class="box"/>
+<text x="340" y="682" class="heading">Monotonic readout</text>
+<text x="340" y="715" class="body">Positive RR/RG evidence scales</text>
+<text x="340" y="746" class="body">NoR decreases with both scores</text>
+<text x="340" y="773" class="small">No direct scene class logits</text>
+<path d="M645 720 H585" class="path"/>
+
+<rect x="40" y="650" width="220" height="140" class="box data"/>
+<text x="60" y="684" class="heading">Image prediction</text>
+<text x="60" y="719" class="body">Softmax: RR / RG / NoR</text>
+<text x="60" y="751" class="body">Evidence maps</text>
+<text x="60" y="776" class="small">Single EMA head at T = 1</text>
+<path d="M320 720 H260" class="path"/>
+
+<line x1="40" y1="827" x2="1200" y2="827" stroke="#becbd7" stroke-dasharray="6 5"/>
+<text x="40" y="856" class="body">Training: image CE (two views) + lamp / state / relevance / direction / pictogram losses + symmetric KL</text>
+<text x="40" y="882" class="small">Full-frame views and independent attribute masks. Inference uses image pixels, content mask, and geometry only; no boxes or labels.</text>
+<polygon points="315.0,185.0 306.0,189.0 306.0,181.0" fill="#425466"/>
+<polygon points="670.0,185.0 661.0,189.0 661.0,181.0" fill="#425466"/>
+<polygon points="945.0,185.0 936.0,189.0 936.0,181.0" fill="#425466"/>
+<polygon points="1070.0,330.0 1066.0,321.0 1074.0,321.0" fill="#425466"/>
+<polygon points="885.0,392.0 894.0,388.0 894.0,396.0" fill="#425466"/>
+<polygon points="765.0,330.0 761.0,321.0 769.0,321.0" fill="#425466"/>
+<polygon points="475.0,360.0 471.0,351.0 479.0,351.0" fill="#425466"/>
+<polygon points="595.0,426.0 604.0,422.0 604.0,430.0" fill="#425466"/>
+<polygon points="355.0,445.0 346.0,449.0 346.0,441.0" fill="#425466"/>
+<polygon points="795.0,495.0 791.0,486.0 799.0,486.0" fill="#425466"/>
+<polygon points="645.0,547.0 636.0,551.0 636.0,543.0" fill="#425466"/>
+<polygon points="1080.0,650.0 1076.0,641.0 1084.0,641.0" fill="#425466"/>
+<polygon points="945.0,713.0 936.0,717.0 936.0,709.0" fill="#425466"/>
+<polygon points="885.0,720.0 894.0,716.0 894.0,724.0" fill="#425466"/>
+<polygon points="585.0,720.0 594.0,716.0 594.0,724.0" fill="#425466"/>
+<polygon points="260.0,720.0 269.0,716.0 269.0,724.0" fill="#425466"/>
 </svg>

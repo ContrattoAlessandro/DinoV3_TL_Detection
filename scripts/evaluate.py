@@ -1,4 +1,4 @@
-"""Evaluate fixed v5 checkpoints on the official DTLD test split.
+"""Evaluate fixed Experiment C checkpoints on the official DTLD test split.
 
 Raw T=1 metrics are primary. A single checkpoint can additionally use its saved
 DTLD-validation temperature. No calibration is fitted on test data.
@@ -56,7 +56,7 @@ def main():
     ap.add_argument("--ckpt", required=True, nargs="+")
     ap.add_argument("--device", default=None)
     ap.add_argument(
-        "--out", default="runs/v5/evaluations/dtld_test", help="directory for report and raw predictions"
+        "--out", default="runs/evaluations/dtld_test", help="directory for report and raw predictions"
     )
     ap.add_argument("--runtime-loader", type=Path, help="execution-only worker/thread settings")
     ap.add_argument(
@@ -88,7 +88,7 @@ def main():
             if state["cfg"][section] != cfg[section]:
                 raise ValueError(f"Checkpoints differ in {section}; cannot share encoder/test membership")
         if "ema" not in state:
-            raise ValueError("The final v5 evaluation requires retained EMA weights")
+            raise ValueError("The official DTLD evaluation requires retained EMA weights")
     checkpoint_hashes = [sha256_file(path) for path in args.ckpt]
     if len(set(checkpoint_hashes)) != len(checkpoint_hashes):
         raise ValueError("Duplicate ensemble checkpoint")
@@ -100,6 +100,7 @@ def main():
             epoch=state["epoch"],
             seed=state["cfg"]["optim"]["seed"],
             weights="EMA",
+            head_parameters=sum(t.numel() for t in state["ema"].values()),
         )
         for index, (path, digest, state) in enumerate(zip(args.ckpt, checkpoint_hashes, states))
     ]
@@ -169,8 +170,7 @@ def main():
                 "src/dinov3_global/config.py",
                 "src/dinov3_global/engine.py",
                 "src/dinov3_global/preprocessing.py",
-                "src/dinov3_global/evidence_head.py",
-                "src/dinov3_global/study.py",
+                "src/dinov3_global/pooling.py",
             )
         },
         data_audit=audit,
