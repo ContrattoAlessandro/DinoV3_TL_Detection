@@ -43,19 +43,31 @@ def main():
                 torch.cuda.synchronize()
                 elapsed.append(start.elapsed_time(end))
         latency = float(np.median(elapsed))
-        models[name] = dict(head_parameters=sum(p.numel() for p in model.head.parameters()),
-                            batch_latency_ms=latency, images_per_second=4000 / latency,
-                            peak_gpu_allocated_bytes=torch.cuda.max_memory_allocated(),
-                            checkpoint_sha256=sha256_file(path))
+        models[name] = dict(
+            head_parameters=sum(p.numel() for p in model.head.parameters()),
+            batch_latency_ms=latency,
+            images_per_second=4000 / latency,
+            peak_gpu_allocated_bytes=torch.cuda.max_memory_allocated(),
+            checkpoint_sha256=sha256_file(path),
+        )
         del model
         gc.collect()
         torch.cuda.empty_cache()
-    write_json(args.pilot / "benchmark.json", dict(
-        status="complete", batch=4, target_hw=[720, 1280], warmup_batches=5, measured_batches=30,
-        latency="median CUDA-event time; complete frozen encoder and head; preprocessing excluded",
-        autocast_dtype=str(torch.get_autocast_dtype("cuda")), gpu=torch.cuda.get_device_name(0),
-        models=models, completed_at_unix=time.time(),
-    ))
+    write_json(
+        args.pilot / "benchmark.json",
+        dict(
+            status="complete",
+            batch=4,
+            target_hw=[720, 1280],
+            warmup_batches=5,
+            measured_batches=30,
+            latency="median CUDA-event time; complete frozen encoder and head; preprocessing excluded",
+            autocast_dtype=str(torch.get_autocast_dtype("cuda")),
+            gpu=torch.cuda.get_device_name(0),
+            models=models,
+            completed_at_unix=time.time(),
+        ),
+    )
     print(models)
 
 

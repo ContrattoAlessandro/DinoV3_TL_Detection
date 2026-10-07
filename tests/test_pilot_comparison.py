@@ -16,8 +16,9 @@ def predictions(paths=("a", "b", "c"), labels=None):
 
 def test_comparison_aligns_by_identity_instead_of_row_order():
     baseline = predictions()
-    candidate = [part[[2, 0, 1]] if isinstance(part, np.ndarray) else [part[i] for i in (2, 0, 1)]
-                 for part in baseline]
+    candidate = [
+        part[[2, 0, 1]] if isinstance(part, np.ndarray) else [part[i] for i in (2, 0, 1)] for part in baseline
+    ]
     labels, old, new = align_predictions(baseline, candidate, 3)
     assert np.array_equal(labels, [0, 1, 2]) and np.array_equal(old, new)
 
@@ -77,28 +78,49 @@ def test_complete_export_contains_all_datasets_metrics_and_hashes(tmp_path):
         lines = ["file,label,logit_RR,logit_RG,logit_NoR"]
         for i in range(528):
             label = i % 3
-            lines.append(f"atlas/{i},{('RR','RG','NoR')[label]}," +
-                         ",".join(str(scale if c == label else 0) for c in range(3)))
+            lines.append(
+                f"atlas/{i},{('RR', 'RG', 'NoR')[label]},"
+                + ",".join(str(scale if c == label else 0) for c in range(3))
+            )
         atlas.write_text("\n".join(lines))
         paths, labels = npz(root / "evaluations/vzc" / name / "predictions.npz", "vzc", 598, scale)
         write(root / "evaluations/vzc/status.json", dict(state="complete"))
-        write(root / "evaluations/vzc/labels_snapshot.json", dict(images=[
-            dict(file=p, label=int(y), split="test") for p, y in zip(paths, labels)]))
-    write(new / "evaluations/atlas/v6_axial_fold0/report.json",
-          dict(metric_input="raw logits T=1", metrics=dict(n=528)))
+        write(
+            root / "evaluations/vzc/labels_snapshot.json",
+            dict(images=[dict(file=p, label=int(y), split="test") for p, y in zip(paths, labels)]),
+        )
+    write(
+        new / "evaluations/atlas/v6_axial_fold0/report.json",
+        dict(metric_input="raw logits T=1", metrics=dict(n=528)),
+    )
     write(new / "evaluations/vzc/v6_axial_fold0/report.json", dict(checkpoint_sha256=digest))
-    model_metrics = dict(head_parameters=1, batch_latency_ms=10, images_per_second=400,
-                         peak_gpu_allocated_bytes=1000, checkpoint_sha256=digest)
-    write(new / "benchmark.json", dict(status="complete", models={
-        "v5_fold0": model_metrics, "v6_axial_fold0": model_metrics}))
+    model_metrics = dict(
+        head_parameters=1,
+        batch_latency_ms=10,
+        images_per_second=400,
+        peak_gpu_allocated_bytes=1000,
+        checkpoint_sha256=digest,
+    )
+    write(
+        new / "benchmark.json",
+        dict(status="complete", models={"v5_fold0": model_metrics, "v6_axial_fold0": model_metrics}),
+    )
     result = export(new, old, out)
     assert len(result["comparisons"]) == 4
     assert [c["n"] for c in result["comparisons"]] == [7032, 12453, 528, 598]
     assert result["efficiency"]["training"]["candidate_duration_seconds"] == 120
     assert len(result["source_sha256"]) >= 8
-    assert all((out / filename).is_file() for filename in (
-        "README.md", "comparison.json", "metrics.csv", "per_class_metrics.csv",
-        "confusion_matrices.csv", "efficiency.csv"))
+    assert all(
+        (out / filename).is_file()
+        for filename in (
+            "README.md",
+            "comparison.json",
+            "metrics.csv",
+            "per_class_metrics.csv",
+            "confusion_matrices.csv",
+            "efficiency.csv",
+        )
+    )
     # An explicitly recovered record must not fabricate a missing epoch timer.
     history[5]["elapsed_seconds"] = None
     history[5]["peak_gpu_allocated_bytes"] = None

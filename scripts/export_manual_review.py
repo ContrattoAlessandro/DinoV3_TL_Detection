@@ -122,22 +122,34 @@ def prepare(seed):
     frozen = read_json(DIAGNOSTICS / "plan.json")
     baseline = read_json(REPO / "runs/v5/evaluations/dtld_test/plan.json")["checkpoints"][0]
     model_info = {
-        "v5_fold0": dict(checkpoint=baseline["checkpoint"], sha256=baseline["checkpoint_sha256"],
-                         epoch=baseline["epoch"], architecture="v5", weights="EMA"),
+        "v5_fold0": dict(
+            checkpoint=baseline["checkpoint"],
+            sha256=baseline["checkpoint_sha256"],
+            epoch=baseline["epoch"],
+            architecture="v5",
+            weights="EMA",
+        ),
     }
     for job in frozen["jobs"]:
         if job["name"] in MODELS:
             model_info[job["name"]] = dict(
-                checkpoint=Path(job["checkpoint"]).relative_to(REPO).as_posix(), sha256=job["sha256"],
-                epoch=job["epoch"], architecture=job["architecture"], weights="EMA",
+                checkpoint=Path(job["checkpoint"]).relative_to(REPO).as_posix(),
+                sha256=job["sha256"],
+                epoch=job["epoch"],
+                architecture=job["architecture"],
+                weights="EMA",
             )
     for name, info in model_info.items():
         if sha256(REPO / info["checkpoint"]) != info["sha256"]:
             raise ValueError(f"Checkpoint changed: {name}")
 
-    inputs = [DIAGNOSTICS / "dtld_membership.json", DIAGNOSTICS / "vzc_test_labels.json",
-              REPO / "datasets/DTLD/v2.0/DTLD_test.json", REPO / "datasets/VZC_TLD/labels/test_v1.json",
-              REPO / "metadata/atlas_labels.json"]
+    inputs = [
+        DIAGNOSTICS / "dtld_membership.json",
+        DIAGNOSTICS / "vzc_test_labels.json",
+        REPO / "datasets/DTLD/v2.0/DTLD_test.json",
+        REPO / "datasets/VZC_TLD/labels/test_v1.json",
+        REPO / "metadata/atlas_labels.json",
+    ]
     for path in inputs[2:]:
         expected = frozen["input_sha256"][path.relative_to(REPO).as_posix()]
         if sha256(path) != expected:
@@ -152,28 +164,59 @@ def prepare(seed):
             attrs = box.get("attributes", {})
             if attrs.get("relevance") not in ("relevant", "not_relevant") or box["w"] < 1 or box["h"] < 1:
                 continue
-            xyxy = [max(0, box["x"]), max(0, box["y"]),
-                    min(2047, box["x"] + box["w"]), min(1023, box["y"] + box["h"])]
+            xyxy = [
+                max(0, box["x"]),
+                max(0, box["y"]),
+                min(2047, box["x"] + box["w"]),
+                min(1023, box["y"] + box["h"]),
+            ]
             if xyxy[2] <= xyxy[0] or xyxy[3] <= xyxy[1]:
                 continue
-            lamps.append(dict(box=xyxy, relevant=attrs["relevance"] == "relevant",
-                              state=attrs.get("state", "unknown"), pictogram=attrs.get("pictogram", "unknown")))
+            lamps.append(
+                dict(
+                    box=xyxy,
+                    relevant=attrs["relevance"] == "relevant",
+                    state=attrs.get("state", "unknown"),
+                    pictogram=attrs.get("pictogram", "unknown"),
+                )
+            )
         if lamp_label(lamps) != entry["label"]:
             raise ValueError(f"DTLD global label disagrees with native lamps: {identity}")
-        dtld.append(dict(id=identity, image=entry["image"], image_sha256=entry["image_sha256"],
-                         gt=entry["label"], slice=entry["city"], session=entry["session"],
-                         pseudo_nor=entry["pseudo_nor"], uncertain=False, lamps=lamps,
-                         gt_source="Official DTLD test annotations"))
+        dtld.append(
+            dict(
+                id=identity,
+                image=entry["image"],
+                image_sha256=entry["image_sha256"],
+                gt=entry["label"],
+                slice=entry["city"],
+                session=entry["session"],
+                pseudo_nor=entry["pseudo_nor"],
+                uncertain=False,
+                lamps=lamps,
+                gt_source="Official DTLD test annotations",
+            )
+        )
 
     atlas = []
     labels = read_json(inputs[4])
     for identity, entry in labels["images"].items():
         if entry["label"] not in CLASSES:
             raise ValueError(f"Missing ATLAS label: {identity}")
-        atlas.append(dict(id=identity, image=(Path(labels["image_root"]) / identity).as_posix(),
-                          image_sha256=entry["sha256"], gt=entry["label"], slice=Path(identity).parts[-3],
-                          session="", pseudo_nor=False, uncertain=bool(entry.get("uncertain")), lamps=[],
-                          gt_source="Manual ATLAS benchmark label", notes=entry.get("notes", "")))
+        atlas.append(
+            dict(
+                id=identity,
+                image=(Path(labels["image_root"]) / identity).as_posix(),
+                image_sha256=entry["sha256"],
+                gt=entry["label"],
+                slice=Path(identity).parts[-3],
+                session="",
+                pseudo_nor=False,
+                uncertain=bool(entry.get("uncertain")),
+                lamps=[],
+                gt_source="Manual ATLAS benchmark label",
+                notes=entry.get("notes", ""),
+            )
+        )
 
     coco = read_json(inputs[3])
     categories = {item["id"]: item["name"] for item in coco["categories"]}
@@ -182,8 +225,12 @@ def prepare(seed):
         name = categories[entry["category_id"]]
         x, y, w, h = entry["bbox"]
         annotations[entry["image_id"]].append(
-            dict(box=[x, y, x + w, y + h], relevant=name.startswith("relevant_"),
-                 state=name.rsplit("_", 1)[-1], pictogram="")
+            dict(
+                box=[x, y, x + w, y + h],
+                relevant=name.startswith("relevant_"),
+                state=name.rsplit("_", 1)[-1],
+                pictogram="",
+            )
         )
     vzc = []
     for entry in read_json(inputs[1])["images"]:
@@ -192,10 +239,20 @@ def prepare(seed):
         lamps = annotations[entry["image_id"]]
         if lamp_label(lamps) != entry["class_name"]:
             raise ValueError(f"VZC label disagrees with COCO lamps: {entry['file']}")
-        vzc.append(dict(id=entry["file"], image="datasets/VZC_TLD/" + entry["file"],
-                        image_sha256=entry["sha256"], gt=entry["class_name"], slice="published test",
-                        session="", pseudo_nor=entry["pseudo_nor"], uncertain=False, lamps=lamps,
-                        gt_source="Published VZC-TLD test annotations"))
+        vzc.append(
+            dict(
+                id=entry["file"],
+                image="datasets/VZC_TLD/" + entry["file"],
+                image_sha256=entry["sha256"],
+                gt=entry["class_name"],
+                slice="published test",
+                session="",
+                pseudo_nor=entry["pseudo_nor"],
+                uncertain=False,
+                lamps=lamps,
+                gt_source="Published VZC-TLD test annotations",
+            )
+        )
     domains = dict(DTLD=dtld, ATLAS=atlas, VZC_TLD=vzc)
     if [len(entries) for entries in domains.values()] != [100, 528, 598]:
         raise ValueError("Review membership must be 100 DTLD, 528 ATLAS, and 598 VZC-TLD")
@@ -203,9 +260,11 @@ def prepare(seed):
     for domain, entries in domains.items():
         for model in MODELS:
             if model == "v5_fold0":
-                relative = dict(DTLD="dtld_test/member0/predictions.npz",
-                                ATLAS="atlas/v5_fold0/predictions.csv",
-                                VZC_TLD="vzc/v5_fold0/predictions.npz")[domain]
+                relative = dict(
+                    DTLD="dtld_test/member0/predictions.npz",
+                    ATLAS="atlas/v5_fold0/predictions.csv",
+                    VZC_TLD="vzc/v5_fold0/predictions.npz",
+                )[domain]
                 source = REPO / "runs/v5/evaluations" / relative
                 expected_hash = frozen["input_sha256"][source.relative_to(REPO).as_posix()]
             else:
@@ -221,7 +280,8 @@ def prepare(seed):
             if domain != "DTLD" and model != "v5_fold0" and set(cached) != expected_ids:
                 raise ValueError("Incomplete external prediction membership")
             prediction_sources[domain + "/" + model] = dict(
-                file=source.relative_to(REPO).as_posix(), sha256=expected_hash,
+                file=source.relative_to(REPO).as_posix(),
+                sha256=expected_hash,
             )
             for entry in entries:
                 label, logits = cached[entry["id"]]
@@ -230,8 +290,11 @@ def prepare(seed):
                 probs = softmax(logits)
                 pred = CLASSES[int(probs.argmax())]
                 entry.setdefault("models", {})[model] = dict(
-                    pred=pred, correct=pred == entry["gt"], confidence=float(probs.max()),
-                    probabilities=probs.tolist(), logits=logits.tolist(),
+                    pred=pred,
+                    correct=pred == entry["gt"],
+                    confidence=float(probs.max()),
+                    probabilities=probs.tolist(),
+                    logits=logits.tolist(),
                 )
         for index, entry in enumerate(entries, 1):
             entry["dataset"] = domain
@@ -244,13 +307,21 @@ def prepare(seed):
                 row["image"] = f"{model}/{domain}/images/{filename}"
                 row["thumbnail"] = f"{model}/{domain}/thumbnails/{filename}"
     plan = dict(
-        seed=seed, dtld_selection="34 RR, 33 RG, 33 NoR; cycle cities and sessions; independent of predictions",
-        temperature=1.0, prediction_rule="argmax of raw softmax", models=model_info,
+        seed=seed,
+        dtld_selection="34 RR, 33 RG, 33 NoR; cycle cities and sessions; independent of predictions",
+        temperature=1.0,
+        prediction_rule="argmax of raw softmax",
+        models=model_info,
         inference="Exact cached outputs from completed frozen-checkpoint evaluations; no new model fitting",
         prediction_sources=prediction_sources,
         input_sha256={path.relative_to(REPO).as_posix(): sha256(path) for path in inputs},
-        images={domain: [{key: entry[key] for key in ("id", "image", "image_sha256", "gt", "slice", "session")}
-                         for entry in entries] for domain, entries in domains.items()},
+        images={
+            domain: [
+                {key: entry[key] for key in ("id", "image", "image_sha256", "gt", "slice", "session")}
+                for entry in entries
+            ]
+            for domain, entries in domains.items()
+        },
     )
     return domains, plan
 
@@ -258,8 +329,10 @@ def prepare(seed):
 @lru_cache(maxsize=32)
 def font(size, bold=False):
     name = "segoeuib.ttf" if bold else "segoeui.ttf"
-    candidates = (Path("C:/Windows/Fonts") / name,
-                  Path("/usr/share/fonts/truetype/dejavu") / ("DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"))
+    candidates = (
+        Path("C:/Windows/Fonts") / name,
+        Path("/usr/share/fonts/truetype/dejavu") / ("DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"),
+    )
     for path in candidates:
         if path.exists():
             return ImageFont.truetype(str(path), size)
@@ -289,7 +362,9 @@ def render(entry, model, info, photo):
     text(draw, (28, 16), f"{model}  |  {entry['dataset']}  |  Image {entry['index']:04d}", 30, bold=True)
     verdict = "CORRECT" if result["correct"] else "INCORRECT"
     color = "#4ade80" if result["correct"] else "#fb7185"
-    draw.rounded_rectangle((1330, 12, 1572, 61), radius=12, fill="#16382d" if result["correct"] else "#4a2330")
+    draw.rounded_rectangle(
+        (1330, 12, 1572, 61), radius=12, fill="#16382d" if result["correct"] else "#4a2330"
+    )
     text(draw, (1360, 19), verdict, 26, color, True)
     text(draw, (28, 64), fit(draw, entry["id"], 1540, 19), 19, MUTED)
     draw.rounded_rectangle((24, 102, 790, 222), radius=12, fill=PANEL)
@@ -304,15 +379,22 @@ def render(entry, model, info, photo):
     text(draw, (831, 109), "MODEL PREDICTION", 19, CYAN, True)
     text(draw, (831, 132), result["pred"], 43, CLASS_COLORS[CLASSES.index(result["pred"])], True)
     text(draw, (970, 145), f"{100 * result['confidence']:.1f}% probability", 25, bold=True)
-    text(draw, (831, 191), f"{info['architecture']} | epoch {info['epoch']} | EMA | raw softmax T=1", 18, MUTED)
+    text(
+        draw, (831, 191), f"{info['architecture']} | epoch {info['epoch']} | EMA | raw softmax T=1", 18, MUTED
+    )
     for index, (label, probability) in enumerate(zip(CLASSES, result["probabilities"])):
         x = 28 + index * 522
         text(draw, (x, 233), f"P({label})  {100 * probability:.1f}%", 21, CLASS_COLORS[index], True)
         draw.rounded_rectangle((x, 267, x + 475, 277), radius=5, fill="#374151")
         if probability > 0.002:
-            draw.rounded_rectangle((x, 267, x + max(5, 475 * probability), 277), radius=5, fill=CLASS_COLORS[index])
-    legend = ("GT lamp boxes: CYAN = relevant, GRAY = not relevant. Numbers match enlarged crops."
-              if entry["lamps"] else "ATLAS has image-level manual labels; no relevance box annotations are available.")
+            draw.rounded_rectangle(
+                (x, 267, x + max(5, 475 * probability), 277), radius=5, fill=CLASS_COLORS[index]
+            )
+    legend = (
+        "GT lamp boxes: CYAN = relevant, GRAY = not relevant. Numbers match enlarged crops."
+        if entry["lamps"]
+        else "ATLAS has image-level manual labels; no relevance box annotations are available."
+    )
     text(draw, (28, 289), legend, 19, MUTED)
     visible = photo.resize((WIDTH, photo_h), Image.Resampling.LANCZOS)
     if model == "v5_fold0" and entry["dataset"] == "DTLD":
@@ -332,8 +414,12 @@ def render(entry, model, info, photo):
     sx, sy = WIDTH / photo.width, photo_h / photo.height
     for number, lamp in enumerate(entry["lamps"], 1):
         x1, y1, x2, y2 = lamp["box"]
-        box = [max(0, x1 * sx), top + max(0, y1 * sy), min(WIDTH - 1, x2 * sx),
-               top + min(photo_h - 1, y2 * sy)]
+        box = [
+            max(0, x1 * sx),
+            top + max(0, y1 * sy),
+            min(WIDTH - 1, x2 * sx),
+            top + min(photo_h - 1, y2 * sy),
+        ]
         if box[2] <= box[0] or box[3] <= box[1]:
             continue
         color = CYAN if lamp["relevant"] else GRAY
@@ -343,26 +429,57 @@ def render(entry, model, info, photo):
         text(draw, (lx + 3, ly - 1), str(number), 16, color, True)
     if rows:
         strip_y = top + photo_h
-        text(draw, (28, strip_y + 11),
-             f"GROUND-TRUTH LAMP CROPS  |  {len(ranked)} of {len(entry['lamps'])} shown; all boxes marked above", 21, bold=True)
+        text(
+            draw,
+            (28, strip_y + 11),
+            f"GROUND-TRUTH LAMP CROPS  |  {len(ranked)} of {len(entry['lamps'])} shown; all boxes marked above",
+            21,
+            bold=True,
+        )
         for position, (number, lamp) in enumerate(ranked):
             x, y = 24 + (position % 6) * 260, strip_y + 48 + (position // 6) * crop_h
             color = CYAN if lamp["relevant"] else GRAY
             draw.rounded_rectangle((x, y, x + 250, y + 241), radius=8, fill=PANEL, outline=color, width=2)
             x1, y1, x2, y2 = lamp["box"]
             margin = max(12, (x2 - x1) * 0.8, (y2 - y1) * 0.4)
-            bounds = (max(0, int(x1 - margin)), max(0, int(y1 - margin)),
-                      min(photo.width, int(x2 + margin + 1)), min(photo.height, int(y2 + margin + 1)))
+            bounds = (
+                max(0, int(x1 - margin)),
+                max(0, int(y1 - margin)),
+                min(photo.width, int(x2 + margin + 1)),
+                min(photo.height, int(y2 + margin + 1)),
+            )
             crop = photo.crop(bounds)
             scale = min(228 / crop.width, 160 / crop.height)
-            enlarged = crop.resize((max(1, round(crop.width * scale)), max(1, round(crop.height * scale))),
-                                   Image.Resampling.BICUBIC)
+            enlarged = crop.resize(
+                (max(1, round(crop.width * scale)), max(1, round(crop.height * scale))),
+                Image.Resampling.BICUBIC,
+            )
             px, py = x + (250 - enlarged.width) // 2, y + 9 + (160 - enlarged.height) // 2
             canvas.paste(enlarged, (px, py))
-            draw.rectangle((px + (x1 - bounds[0]) * scale, py + (y1 - bounds[1]) * scale,
-                            px + (x2 - bounds[0]) * scale, py + (y2 - bounds[1]) * scale), outline=color, width=2)
-            text(draw, (x + 12, y + 176), f"#{number:02d}  {'RELEVANT' if lamp['relevant'] else 'NOT RELEVANT'}", 17, color, True)
-            text(draw, (x + 12, y + 201), fit(draw, f"{lamp['state']}  |  {lamp['pictogram'] or 'pictogram unavailable'}", 227, 15), 15)
+            draw.rectangle(
+                (
+                    px + (x1 - bounds[0]) * scale,
+                    py + (y1 - bounds[1]) * scale,
+                    px + (x2 - bounds[0]) * scale,
+                    py + (y2 - bounds[1]) * scale,
+                ),
+                outline=color,
+                width=2,
+            )
+            text(
+                draw,
+                (x + 12, y + 176),
+                f"#{number:02d}  {'RELEVANT' if lamp['relevant'] else 'NOT RELEVANT'}",
+                17,
+                color,
+                True,
+            )
+            text(
+                draw,
+                (x + 12, y + 201),
+                fit(draw, f"{lamp['state']}  |  {lamp['pictogram'] or 'pictogram unavailable'}", 227, 15),
+                15,
+            )
     foot_y = canvas.height - footer
     if model == "v5_fold0" and entry["dataset"] == "DTLD":
         detail = "v5 input: side-cropped 720x1280 JPEG. Amber boundaries mark its retained field of view."
@@ -370,8 +487,20 @@ def render(entry, model, info, photo):
         detail = "Model input: full-frame letterbox at 720x1280. The photo above is shown without padding."
     else:
         detail = "Model input: full frame resized to 720x1280. The photo above preserves its original aspect ratio."
-    text(draw, (28, foot_y + 5), detail, 19, ORANGE if model == "v5_fold0" and entry["dataset"] == "DTLD" else MUTED)
-    text(draw, (28, foot_y + 35), f"Slice: {entry['slice']}  |  Boxes and crop attributes are ground truth; prediction is image-level.", 18, MUTED)
+    text(
+        draw,
+        (28, foot_y + 5),
+        detail,
+        19,
+        ORANGE if model == "v5_fold0" and entry["dataset"] == "DTLD" else MUTED,
+    )
+    text(
+        draw,
+        (28, foot_y + 35),
+        f"Slice: {entry['slice']}  |  Boxes and crop attributes are ground truth; prediction is image-level.",
+        18,
+        MUTED,
+    )
     return canvas
 
 
@@ -442,11 +571,22 @@ def gallery(path, entries, models, prefix):
     nav = '<a href="../index.html">Compare all three</a>' if len(models) == 1 else ""
     nav += "".join(f'<a href="{prefix}{name}/index.html">{name} gallery</a>' for name in MODELS)
     # Embed the data so the gallery also works when opened directly from File Explorer.
-    payload = json.dumps(entries, ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    replacements = dict(TITLE=html.escape(title), COLUMNS=str(len(models)), NAV=nav, DATA=payload,
-                        MODELS=json.dumps(models), PREFIX=json.dumps(prefix),
-                        ERROR_LABEL=" (any model)" if len(models) > 1 else "",
-                        CORRECT_LABEL=" (all models)" if len(models) > 1 else "")
+    payload = (
+        json.dumps(entries, ensure_ascii=False)
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+    )
+    replacements = dict(
+        TITLE=html.escape(title),
+        COLUMNS=str(len(models)),
+        NAV=nav,
+        DATA=payload,
+        MODELS=json.dumps(models),
+        PREFIX=json.dumps(prefix),
+        ERROR_LABEL=" (any model)" if len(models) > 1 else "",
+        CORRECT_LABEL=" (all models)" if len(models) > 1 else "",
+    )
     value = GALLERY
     for key, replacement in replacements.items():
         value = value.replace("__" + key + "__", replacement)
@@ -477,7 +617,9 @@ def exports(out, domains, plan, workers):
                 (out / model / domain / folder).mkdir(parents=True, exist_ok=True)
     gallery_records = []
     for entry in entries:
-        gallery_records.append({key: value for key, value in entry.items() if key not in ("lamps", "image_sha256")})
+        gallery_records.append(
+            {key: value for key, value in entry.items() if key not in ("lamps", "image_sha256")}
+        )
     gallery(out / "index.html", gallery_records, list(MODELS), "")
     summaries = {}
     for model in MODELS:
@@ -487,47 +629,88 @@ def exports(out, domains, plan, workers):
         for domain, group in domains.items():
             counts = Counter(entry["gt"] for entry in group)
             correct = sum(entry["models"][model]["correct"] for entry in group)
-            summaries[model][domain] = dict(n=len(group), correct=correct, incorrect=len(group) - correct,
-                                           classes=dict(counts), disagreements=sum(e["disagreement"] for e in group))
+            summaries[model][domain] = dict(
+                n=len(group),
+                correct=correct,
+                incorrect=len(group) - correct,
+                classes=dict(counts),
+                disagreements=sum(e["disagreement"] for e in group),
+            )
             for entry in group:
                 result = entry["models"][model]
-                rows.append(dict(dataset=domain, index=entry["index"], id=entry["id"], source_image=entry["image"],
-                                 ground_truth=entry["gt"], prediction=result["pred"], correct=result["correct"],
-                                 **{f"P_{c}": result["probabilities"][i] for i, c in enumerate(CLASSES)},
-                                 **{f"logit_{c}": result["logits"][i] for i, c in enumerate(CLASSES)},
-                                 slice=entry["slice"], session=entry["session"], uncertain=entry["uncertain"],
-                                 pseudo_nor=entry["pseudo_nor"], models_disagree=entry["disagreement"],
-                                 review_image=str(Path(result["image"]).relative_to(model)).replace("\\", "/")))
+                rows.append(
+                    dict(
+                        dataset=domain,
+                        index=entry["index"],
+                        id=entry["id"],
+                        source_image=entry["image"],
+                        ground_truth=entry["gt"],
+                        prediction=result["pred"],
+                        correct=result["correct"],
+                        **{f"P_{c}": result["probabilities"][i] for i, c in enumerate(CLASSES)},
+                        **{f"logit_{c}": result["logits"][i] for i, c in enumerate(CLASSES)},
+                        slice=entry["slice"],
+                        session=entry["session"],
+                        uncertain=entry["uncertain"],
+                        pseudo_nor=entry["pseudo_nor"],
+                        models_disagree=entry["disagreement"],
+                        review_image=str(Path(result["image"]).relative_to(model)).replace("\\", "/"),
+                    )
+                )
         with (out / model / "predictions.csv").open("w", encoding="utf-8", newline="") as stream:
             writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
             writer.writeheader()
             writer.writerows(rows)
-        write_json(out / model / "manifest.json", dict(model=model, **plan["models"][model], datasets=summaries[model],
-                                                      temperature=1, images=rows))
+        write_json(
+            out / model / "manifest.json",
+            dict(model=model, **plan["models"][model], datasets=summaries[model], temperature=1, images=rows),
+        )
     write_json(out / "selection.json", plan)
     write_json(out / "summary.json", summaries)
-    readme = ["# Manual model review", "", "Open **index.html** for a side-by-side comparison, or a model's index.html for its gallery.",
-              "Each model has DTLD/images, ATLAS/images and VZC_TLD/images folders with standalone annotated JPEGs.", "",
-              "The same 1,226 images are used for each model: 100 DTLD official test frames, all 528 manually labeled ATLAS benchmark images, and all 598 published VZC-TLD test images.",
-              "DTLD selection uses seed 0 by default, balances classes (34 RR / 33 RG / 33 NoR), and cycles cities/sessions independently of model predictions. It is an illustrative review set, not an estimate of overall test accuracy.", "",
-              "Ground-truth and predicted image classes, correctness, and all three raw softmax probabilities are printed on every image. Cyan/gray boxes and enlarged lamp crops are ground-truth annotations, not detections by these classification models. ATLAS has image labels only. The one uncertain ATLAS label remains included and is flagged.",
-              "NoR includes relevant off/unknown-only scenes under the existing label policy. RR has priority over RG when both occur.", "",
-              "v5 DTLD predictions use the existing cropped/resized JPEGs; amber boundaries indicate their field of view on the displayed original RGB frame. B/C use full-frame letterboxing. External v5 images were resized without side cropping.",
-              "Predictions are the exact cached outputs from the completed fixed-checkpoint evaluations (EMA, T=1, argmax), not newly fitted or recalibrated predictions. selection.json records source prediction, annotation, image and checkpoint hashes. B/C remain diagnostic checkpoints that failed the original validation eligibility gate.", "",
-              "| Model | DTLD correct / 100 | ATLAS correct / 528 | VZC-TLD correct / 598 |",
-              "|---|---:|---:|---:|"]
+    readme = [
+        "# Manual model review",
+        "",
+        "Open **index.html** for a side-by-side comparison, or a model's index.html for its gallery.",
+        "Each model has DTLD/images, ATLAS/images and VZC_TLD/images folders with standalone annotated JPEGs.",
+        "",
+        "The same 1,226 images are used for each model: 100 DTLD official test frames, all 528 manually labeled ATLAS benchmark images, and all 598 published VZC-TLD test images.",
+        "DTLD selection uses seed 0 by default, balances classes (34 RR / 33 RG / 33 NoR), and cycles cities/sessions independently of model predictions. It is an illustrative review set, not an estimate of overall test accuracy.",
+        "",
+        "Ground-truth and predicted image classes, correctness, and all three raw softmax probabilities are printed on every image. Cyan/gray boxes and enlarged lamp crops are ground-truth annotations, not detections by these classification models. ATLAS has image labels only. The one uncertain ATLAS label remains included and is flagged.",
+        "NoR includes relevant off/unknown-only scenes under the existing label policy. RR has priority over RG when both occur.",
+        "",
+        "v5 DTLD predictions use the existing cropped/resized JPEGs; amber boundaries indicate their field of view on the displayed original RGB frame. B/C use full-frame letterboxing. External v5 images were resized without side cropping.",
+        "Predictions are the exact cached outputs from the completed fixed-checkpoint evaluations (EMA, T=1, argmax), not newly fitted or recalibrated predictions. selection.json records source prediction, annotation, image and checkpoint hashes. B/C remain diagnostic checkpoints that failed the original validation eligibility gate.",
+        "",
+        "| Model | DTLD correct / 100 | ATLAS correct / 528 | VZC-TLD correct / 598 |",
+        "|---|---:|---:|---:|",
+    ]
     for model in MODELS:
-        readme.append("| " + model + " | " + " | ".join(str(summaries[model][domain]["correct"]) for domain in domains) + " |")
+        readme.append(
+            "| "
+            + model
+            + " | "
+            + " | ".join(str(summaries[model][domain]["correct"]) for domain in domains)
+            + " |"
+        )
     (out / "README.md").write_text("\n".join(readme) + "\n", encoding="utf-8")
     started = time.monotonic()
-    status = dict(state="rendering", total_scenes=len(entries), total_images=len(entries) * len(MODELS), completed_scenes=0)
+    status = dict(
+        state="rendering",
+        total_scenes=len(entries),
+        total_images=len(entries) * len(MODELS),
+        completed_scenes=0,
+    )
     write_json(out / "status.json", status)
     with ThreadPoolExecutor(max_workers=workers) as pool:
         for index, _ in enumerate(pool.map(lambda entry: export_one(entry, out, plan["models"]), entries), 1):
             if index % 50 == 0 or index == len(entries):
                 status.update(completed_scenes=index, elapsed_seconds=round(time.monotonic() - started, 1))
                 write_json(out / "status.json", status)
-                print(f"Rendered {index}/{len(entries)} scenes ({index * len(MODELS)} annotated images)", flush=True)
+                print(
+                    f"Rendered {index}/{len(entries)} scenes ({index * len(MODELS)} annotated images)",
+                    flush=True,
+                )
     # Verify membership, decode every JPEG, and confirm probabilities and labels in the final manifests.
     for model in MODELS:
         for domain, group in domains.items():
@@ -540,10 +723,16 @@ def exports(out, domains, plan, workers):
                         image.verify()
             for entry in group:
                 result = entry["models"][model]
-                if result["pred"] != CLASSES[int(np.argmax(result["logits"]))] or not np.isclose(sum(result["probabilities"]), 1):
+                if result["pred"] != CLASSES[int(np.argmax(result["logits"]))] or not np.isclose(
+                    sum(result["probabilities"]), 1
+                ):
                     raise ValueError("Rendered prediction differs from raw logits")
-    status.update(state="complete", completed_at=datetime.now(timezone.utc).isoformat(),
-                  elapsed_seconds=round(time.monotonic() - started, 1), verified_jpegs=len(entries) * len(MODELS) * 2)
+    status.update(
+        state="complete",
+        completed_at=datetime.now(timezone.utc).isoformat(),
+        elapsed_seconds=round(time.monotonic() - started, 1),
+        verified_jpegs=len(entries) * len(MODELS) * 2,
+    )
     write_json(out / "status.json", status)
     print(f"Complete: {out / 'index.html'}", flush=True)
 
@@ -553,7 +742,9 @@ def main():
     parser.add_argument("--out", type=Path, default=REPO / "runs/manual_review")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--preview", action="store_true", help="render one image per dataset/model for visual inspection")
+    parser.add_argument(
+        "--preview", action="store_true", help="render one image per dataset/model for visual inspection"
+    )
     args = parser.parse_args()
     out = args.out.resolve()
     if not out.is_relative_to(REPO / "runs") or args.workers < 1:
@@ -571,7 +762,9 @@ def main():
             with Image.open(REPO / entry["image"]) as original:
                 photo = original.convert("RGB")
             for model in MODELS:
-                render(entry, model, plan["models"][model], photo).save(preview / f"{domain}_{model}.jpg", quality=90)
+                render(entry, model, plan["models"][model], photo).save(
+                    preview / f"{domain}_{model}.jpg", quality=90
+                )
         print(f"Preview: {preview}")
     else:
         exports(out, domains, plan, args.workers)

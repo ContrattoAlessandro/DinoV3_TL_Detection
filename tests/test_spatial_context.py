@@ -21,8 +21,9 @@ def heads(grid=(3, 4)):
     torch.manual_seed(0)
     baseline = TokenMILHead(in_dim=8, proj_dim=8, grid_hw=grid, dropout=0, scene_dropout=0).eval()
     torch.manual_seed(0)
-    spatial = TokenMILHead(in_dim=8, proj_dim=8, grid_hw=grid, dropout=0, scene_dropout=0,
-                           spatial_context=AXIAL).eval()
+    spatial = TokenMILHead(
+        in_dim=8, proj_dim=8, grid_hw=grid, dropout=0, scene_dropout=0, spatial_context=AXIAL
+    ).eval()
     return baseline, spatial
 
 
@@ -30,8 +31,9 @@ def test_disabled_context_preserves_seeded_weights_and_strict_state_dict():
     baseline, spatial = heads()
     for key, value in baseline.state_dict().items():
         assert torch.equal(value, spatial.state_dict()[key])
-    explicit = TokenMILHead(in_dim=8, proj_dim=8, grid_hw=(3, 4), dropout=0, scene_dropout=0,
-                            spatial_context={"mode": "none"}).eval()
+    explicit = TokenMILHead(
+        in_dim=8, proj_dim=8, grid_hw=(3, 4), dropout=0, scene_dropout=0, spatial_context={"mode": "none"}
+    ).eval()
     explicit.load_state_dict(baseline.state_dict(), strict=True)
     patches, cls = torch.randn(2, 12, 8), torch.randn(2, 8)
     a, am = baseline(patches, cls)
@@ -56,8 +58,9 @@ def test_context_runs_once_and_only_changes_relevance_inputs():
             assert torch.equal(a[key], b[key])
         assert not torch.equal(a["rel_logit"], b["rel_logit"])
     logits.square().mean().backward()
-    assert all(p.grad is not None and torch.isfinite(p.grad).all()
-               for p in spatial.spatial_context.parameters())
+    assert all(
+        p.grad is not None and torch.isfinite(p.grad).all() for p in spatial.spatial_context.parameters()
+    )
 
 
 def test_relevance_queries_a_different_column_twenty_rows_below():
@@ -93,8 +96,15 @@ def test_axial_rows_and_columns_preserve_batch_and_grid_order():
     assert torch.equal(captured[1], grid.permute(0, 2, 1, 3).reshape(10, 3, 4))
 
 
-@pytest.mark.parametrize("value", [dict(mode="bad"), dict(mode="axial", heads=5),
-                                    dict(mode="axial", depth=0), dict(mode="axial", mlp_ratio=float('nan'))])
+@pytest.mark.parametrize(
+    "value",
+    [
+        dict(mode="bad"),
+        dict(mode="axial", heads=5),
+        dict(mode="axial", depth=0),
+        dict(mode="axial", mlp_ratio=float("nan")),
+    ],
+)
 def test_invalid_spatial_config_is_rejected(value):
     cfg = deepcopy(load_config(ROOT / "configs/default.yaml"))
     cfg["decoder"]["spatial_context"] = value
@@ -126,8 +136,9 @@ def test_axial_model_keeps_encoder_frozen(monkeypatch):
 
     net = MockViT()
     monkeypatch.setattr(AutoModel, "from_pretrained", lambda *args, **kwargs: net)
-    model = DinoGlobal(dtype="float32", grid_hw=(2, 3), proj_dim=8, dropout=0, scene_dropout=0,
-                       spatial_context=AXIAL).train()
+    model = DinoGlobal(
+        dtype="float32", grid_hw=(2, 3), proj_dim=8, dropout=0, scene_dropout=0, spatial_context=AXIAL
+    ).train()
     model(torch.ones(2, 3, 32, 48))["logits"].sum().backward()
     assert not net.training and net.parameter.grad is None
     assert all(not p.requires_grad for p in model.backbone.parameters())
