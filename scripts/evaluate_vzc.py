@@ -29,8 +29,9 @@ from dinov3_global.data import global_label_from_states
 from dinov3_global.backbone import BACKBONE_ID, BACKBONE_REVISION
 from dinov3_global.dtld import STATES
 from dinov3_global.engine import load_model
+from dinov3_global.config import architecture_name
 from dinov3_global.metrics import report, softmax_np, to_jsonable
-from dinov3_global.inference import preprocess
+from dinov3_global.preprocessing import preprocess_for_config
 
 CLASSES = ["RR", "RG", "NoR"]
 CATEGORIES = [
@@ -76,6 +77,8 @@ def source_hashes():
             for name in ("backbone", "model", "head", "engine", "data", "dtld", "metrics", "config")
         ],
         REPO / "src/dinov3_global/inference.py",
+        REPO / "src/dinov3_global/preprocessing.py",
+        REPO / "src/dinov3_global/evidence_head.py",
     ]
     return {str(p.relative_to(REPO)): sha256(p) for p in files}
 
@@ -235,6 +238,30 @@ def model_report(entries, logits, temperature):
     return result
 
 
+def evaluation_jobs(checkpoints, names=None):
+    if names is not None and len(names) != len(checkpoints):
+        raise ValueError("One model name is required for each checkpoint")
+    jobs = []
+    for index, path in enumerate(checkpoints):
+        cfg = torch.load(path, map_location="cpu", weights_only=True)["cfg"]
+        architecture = architecture_name(cfg)
+        name = names[index] if names is not None else f"{architecture}_fold{index}"
+        if not name or Path(name).name != name or name in (".", "..") or "\\" in name or ":" in name:
+            raise ValueError("Model names must be simple directory names")
+        jobs.append(
+            dict(
+                name=name,
+                checkpoint=str(path.resolve()),
+                checkpoint_sha256=sha256(path),
+                architecture=architecture,
+                seed=cfg["optim"]["seed"],
+            )
+        )
+    if len({j["name"] for j in jobs}) != len(jobs):
+        raise ValueError("Duplicate model names")
+    return jobs
+
+
 def export(out, entries, model_reports, model_logits):
     summary, classes, confusion = [], [], []
     for name, result in model_reports.items():
@@ -314,7 +341,7 @@ def export(out, entries, model_reports, model_logits):
     # Mean individual-model metrics are separate from the logit ensemble.
     grouped = defaultdict(list)
     for row in summary:
-        if row["model"].startswith("v5_fold"):
+        if "ensemble" not in row["model"]:
             grouped[(row["split"], row["policy"])].append(row)
     means = []
     for (split, policy), rows in grouped.items():
@@ -339,6 +366,7 @@ def main():
     parser.add_argument("--manifest", type=Path, default=REPO / "datasets/VZC_TLD/download_manifest.json")
     parser.add_argument("--out", type=Path, default=REPO / "runs/v5/vzc")
     parser.add_argument("--ckpt", nargs="+", type=Path)
+    parser.add_argument("--model-names", nargs="+", help="Names matching --ckpt order")
     parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--device", default="cuda")
     args = parser.parse_args()
@@ -362,16 +390,12 @@ def main():
         raise ValueError("Existing frozen labels differ")
     atomic_json(label_path, label_snapshot)
     atomic_json(args.out / "label_audit.json", audit)
-    jobs = [
-        dict(name=f"v5_fold{f}", checkpoint=str(p.resolve()), checkpoint_sha256=sha256(p))
-        for f, p in enumerate(checkpoints)
-    ]
+    jobs = evaluation_jobs(checkpoints, args.model_names)
     from huggingface_hub import hf_hub_download, try_to_load_from_cache
 
     backbone_files = {}
-    configurations = [
-        torch.load(p, map_location="cpu", weights_only=True)["cfg"]["backbone"] for p in checkpoints
-    ]
+    checkpoint_configs = [torch.load(p, map_location="cpu", weights_only=True)["cfg"] for p in checkpoints]
+    configurations = [cfg["backbone"] for cfg in checkpoint_configs]
     if any(backbone != configurations[0] for backbone in configurations[1:]):
         raise ValueError("All evaluation checkpoints must use the same frozen backbone settings")
     local = configurations[0].get("local_ckpt")
@@ -395,12 +419,17 @@ def main():
         n=len(entries),
         batch=args.batch,
         crop_sides=0,
-        target_hw=[720, 1280],
+        target_hw=checkpoint_configs[0]["data"]["target_hw"],
         metric_input="raw logits T=1; final softmax AP",
         weights="best DTLD-selected EMA checkpoints",
         ensemble="arithmetic mean of raw logits",
         policy="No VZC training, per-fold checkpoint selection, or temperature fitting; exploratory transfer",
     )
+    if any(cfg["data"].get("preprocessing", "legacy") != "legacy" for cfg in checkpoint_configs):
+        plan["preprocessing"] = [
+            dict(mode=cfg["data"].get("preprocessing", "legacy"), target_hw=cfg["data"]["target_hw"])
+            for cfg in checkpoint_configs
+        ]
     plan_path = args.out / "plan.json"
     if plan_path.exists() and json.loads(plan_path.read_text(encoding="utf-8")) != plan:
         raise ValueError("Evaluation plan/provenance changed")
@@ -438,26 +467,20 @@ def main():
                 temperature = existing["temperature_from_DTLD"]
             else:
                 model, cfg, state = load_model(job["checkpoint"], str(REPO), dev)
-                if tuple(cfg["data"]["target_hw"]) != (720, 1280) or cfg["decoder"]["head"] != "mil":
-                    raise ValueError("Unexpected v5 preprocessing/head")
                 temperature = float(state["metrics"]["temperature"])
                 chunks = []
                 print(f"{now()} Evaluating {job['name']} on {len(entries)} images (test first)", flush=True)
                 with torch.inference_mode(), torch.autocast(dev.type, enabled=dev.type == "cuda"):
                     for offset in range(0, len(entries), args.batch):
                         batch_entries = entries[offset : offset + args.batch]
-                        batch = (
-                            torch.stack(
-                                [
-                                    preprocess(str(args.dataset / e["file"]), 0, (720, 1280))[0]
-                                    for e in batch_entries
-                                ]
-                            )
-                            .to(dev)
-                            .float()
-                            .div_(255)
-                        )
-                        chunks.append(model(batch)["logits"].float().cpu().numpy())
+                        prepared = [
+                            preprocess_for_config(str(args.dataset / e["file"]), cfg) for e in batch_entries
+                        ]
+                        metadata = {
+                            k: torch.stack([item[2][k] for item in prepared]).to(dev) for k in prepared[0][2]
+                        }
+                        batch = torch.stack([item[0] for item in prepared]).to(dev).float().div_(255)
+                        chunks.append(model(batch, **metadata)["logits"].float().cpu().numpy())
                         completed = offset + len(batch_entries)
                         if completed % 200 == 0 or completed == len(entries):
                             status.update(
@@ -495,7 +518,9 @@ def main():
             atomic_json(args.out / "status.json", status)
             print(f"Completed {job['name']}: test mAP={result['test']['metrics']['mAP']:.4f}", flush=True)
         if len(jobs) > 1:
-            name = f"v5_ensemble{len(jobs)}"
+            architectures = {j["architecture"] for j in jobs}
+            prefix = next(iter(architectures)) if len(architectures) == 1 else "mixed"
+            name = f"{prefix}_ensemble{len(jobs)}"
             logits = np.mean(list(all_logits.values()), axis=0)
             (args.out / name).mkdir(exist_ok=True)
             result = model_report(entries, logits, None)

@@ -89,18 +89,18 @@ def csv_logits(path, entries):
 def checkpoint_logits(paths, entries, device=None, crop_sides=0):
     import torch
     from dinov3_global.engine import load_model
-    from dinov3_global.inference import preprocess
+    from dinov3_global.preprocessing import preprocess_for_config
 
     dev = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
     logits = []
     for path in paths:
         model, cfg, _ = load_model(path, str(REPO), dev)
-        target_hw = tuple(cfg["data"].get("target_hw", (720, 1280)))
         current = []
         with torch.inference_mode(), torch.autocast(dev.type, enabled=dev.type == "cuda"):
             for _, p, _ in entries:
-                x, _ = preprocess(str(p), crop_sides, target_hw)
-                out = model(x.unsqueeze(0).to(dev).float().div_(255))
+                x, _, metadata = preprocess_for_config(str(p), cfg, crop_sides)
+                metadata = {k: v.unsqueeze(0).to(dev) for k, v in metadata.items()}
+                out = model(x.unsqueeze(0).to(dev).float().div_(255), **metadata)
                 current.append(out["logits"][0].float().cpu().numpy())
         logits.append(np.array(current))
         del model

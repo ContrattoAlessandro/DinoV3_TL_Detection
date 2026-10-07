@@ -15,6 +15,7 @@ from tqdm import tqdm
 
 from .data import global_label_from_states
 from .dtld import _seq_of, image_file_for, load_split, parse_frame
+from .preprocessing import batch_model_kwargs
 
 CLASSES = ("RR", "RG", "NoR")
 
@@ -74,7 +75,12 @@ def audit_test_split(cfg, dataset, repo_root):
             y, debug = global_label_from_states(frame.relevance, frame.state)
             if split == "test":
                 with Image.open(path) as image:
-                    if image.size != tuple(reversed(cfg["data"]["target_hw"])) or image.mode != "RGB":
+                    expected_size = (
+                        (2048, 1024)
+                        if cfg["data"].get("preprocessing") == "letterbox"
+                        else tuple(reversed(cfg["data"]["target_hw"]))
+                    )
+                    if image.size != expected_size or image.mode != "RGB":
                         raise ValueError(f"Test image is not a prepared RGB frame: {path}")
                     image.verify()
             rows.append(
@@ -132,7 +138,12 @@ def audit_test_split(cfg, dataset, repo_root):
             if sum(map(len, g.values())) > 1
         ),
     )
-    return dict(splits=summaries, overlap=overlap, image_hash_scope="prepared JPEG bytes"), splits
+    scope = (
+        "native full-frame RGB JPEG bytes"
+        if cfg["data"].get("preprocessing") == "letterbox"
+        else "prepared JPEG bytes"
+    )
+    return dict(splits=summaries, overlap=overlap, image_hash_scope=scope), splits
 
 
 @torch.no_grad()
@@ -151,6 +162,7 @@ def predict_heads(model, heads, loader, device, repo_root, progress=None):
     processed, last_update = 0, 0.0
     for batch_index, batch in enumerate(tqdm(loader, desc="DTLD official test", mininterval=5)):
         image = batch["image"].to(device, non_blocking=True).float().div_(255.0)
+        metadata = batch_model_kwargs(batch, device)
         with torch.autocast("cuda", enabled=device.type == "cuda"):
             features = {key: value.float() for key, value in model.backbone(image).items()}
             outputs = [
@@ -159,6 +171,7 @@ def predict_heads(model, heads, loader, device, repo_root, progress=None):
                     features["cls"],
                     patches_mid=features["patches_mid"],
                     cls_mid=features["cls_mid"],
+                    **metadata,
                 )[0]
                 for head in heads
             ]
@@ -166,7 +179,7 @@ def predict_heads(model, heads, loader, device, repo_root, progress=None):
                 try:
                     for index, head in enumerate(heads):
                         model.head = head
-                        reference = model(image)["logits"]
+                        reference = model(image, **metadata)["logits"]
                         torch.testing.assert_close(outputs[index], reference, rtol=0, atol=0)
                         verification.append(dict(member=index, max_abs_logit_difference=0.0))
                 finally:

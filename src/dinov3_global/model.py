@@ -5,6 +5,7 @@ import torch
 from torch import nn
 from .backbone import DinoV3Backbone
 from .head import TokenMILHead
+from .evidence_head import EvidenceMILHead
 
 
 class DinoGlobal(nn.Module):
@@ -16,6 +17,7 @@ class DinoGlobal(nn.Module):
         local_ckpt=None,
         grid_hw=(45, 80),
         mid_layer=6,
+        head_kind="mil",
         **head_kwargs,
     ):
         super().__init__()
@@ -24,7 +26,8 @@ class DinoGlobal(nn.Module):
         self.backbone = DinoV3Backbone(
             hf_id, attn_implementation, dtype, local_ckpt, grid_hw=grid_hw, mid_layer=mid_layer
         )
-        self.head = TokenMILHead(in_dim=2 * self.backbone.dim, grid_hw=grid_hw, **head_kwargs)
+        head_class = EvidenceMILHead if head_kind == "v7_evidence" else TokenMILHead
+        self.head = head_class(in_dim=2 * self.backbone.dim, grid_hw=grid_hw, **head_kwargs)
 
     def train(self, mode=True):
         super().train(mode)
@@ -34,13 +37,17 @@ class DinoGlobal(nn.Module):
     def head_parameters(self):
         return self.head.parameters()
 
-    def forward(self, images):
+    def forward(self, images, content_mask=None, geometry=None):
         with torch.no_grad():
             features = self.backbone(images)
+        metadata = {
+            k: v for k, v in dict(content_mask=content_mask, geometry=geometry).items() if v is not None
+        }
         logits, auxiliary = self.head(
             features["patches"].float(),
             features["cls"].float(),
             patches_mid=features["patches_mid"].float(),
             cls_mid=features["cls_mid"].float(),
+            **metadata,
         )
         return {"logits": logits, **auxiliary}

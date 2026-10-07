@@ -84,7 +84,7 @@ def fold_manifest(items, folds, data, annotation_sha256):
         "label_policy",
         "policy_weight",
     )
-    return {
+    result = {
         "schema_version": 1,
         "source_split": "DTLD_train.json",
         "annotation_sha256": annotation_sha256,
@@ -95,3 +95,18 @@ def fold_manifest(items, folds, data, annotation_sha256):
         "folds": audited,
         "purpose": "Configuration/epoch selection inside official train; not the paper test split",
     }
+    if data.get("preprocessing") == "letterbox":
+        transform = dict(
+            mode="letterbox",
+            source_hw=[1024, 2048],
+            target_hw=data["target_hw"],
+            resize="Pillow bicubic",
+            padding_rgb=[124, 116, 104],
+            patch=16,
+            geometry="normalized unpadded image coordinates",
+            overlap="independent attribute masks",
+        )
+        result["preprocessing"] = transform
+        result["transformation_sha256"] = digest(transform)
+        result["data"]["preprocessing"] = "letterbox"
+    return result

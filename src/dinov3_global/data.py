@@ -5,9 +5,10 @@ green (RG), and map all remaining scenes to NoR. Relevant off/unknown-only
 scenes are recorded separately as pseudo-NoR for diagnostic slices.
 
 Images are decoded as uint8. Boxes in the native 2048x1024 coordinate system
-are mapped through the 114-pixel side crop and bicubic 1280x720 resize to a
-45x80 grid. A surrounding ignore band prevents ambiguous background targets;
-tokens with conflicting overlapping boxes are excluded from auxiliary losses.
+use the legacy side crop/resize or configured full-frame letterboxing. A
+surrounding ignore band prevents ambiguous background targets. Letterboxing
+masks conflicts independently per attribute; legacy targets retain nearest
+lamp ownership for checkpoint and experiment compatibility.
 Inference uses image pixels alone.
 """
 
@@ -21,6 +22,7 @@ import numpy as np
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
+from .preprocessing import letterbox, rasterize_attributes
 
 # Native DTLD parsing is kept alongside the DinoV3 dataset.
 from .dtld import (
@@ -189,6 +191,9 @@ class DTLDGlobalDataset(Dataset):
         label_policy: str = "map_to_nor",
         policy_weight: float = 0.3,
         items: Optional[List[Dict[str, Any]]] = None,
+        preprocessing: str = "legacy",
+        zoom_out_prob: float = 0.0,
+        zoom_out_min: float = 0.9,
     ):
         self.split = split
         self.img_root = img_root
@@ -198,6 +203,12 @@ class DTLDGlobalDataset(Dataset):
         self.target_hw = tuple(target_hw)
         self.label_policy = label_policy
         self.policy_weight = policy_weight
+        if preprocessing not in ("legacy", "letterbox"):
+            raise ValueError("Unknown preprocessing mode")
+        if not 0 <= zoom_out_prob <= 1 or not 0 < zoom_out_min <= 1:
+            raise ValueError("Invalid zoom-out settings")
+        self.preprocessing = preprocessing
+        self.zoom_out_prob, self.zoom_out_min = zoom_out_prob, zoom_out_min
         if items is not None:
             self.items = list(items)  # pre-parsed subset (train/val carve-up)
             self.n_rel_off_unknown = sum(it.get("pseudo_nor", 0) for it in self.items)
@@ -251,14 +262,30 @@ class DTLDGlobalDataset(Dataset):
         it = self.items[i]
         entry = it["entry"]
         fp = image_file_for(self.img_root, self.split, entry.get("image_path", ""))
-        img = Image.open(fp).convert("RGB")
-        img = self._preprocess(img)
+        with Image.open(fp) as source:
+            img = source.convert("RGB")
+        transform = None
+        if self.preprocessing == "letterbox":
+            if img.size != (SRC_W, SRC_H):
+                raise ValueError("DTLD letterboxing requires uncropped native RGB images")
+            zoomed = self.train and random.random() < self.zoom_out_prob
+            zoom = random.uniform(self.zoom_out_min, 1) if zoomed else 1.0
+            img, transform = letterbox(img, self.target_hw, zoom, random_placement=zoomed)
+        else:
+            img = self._preprocess(img)
         arr = np.array(img, dtype=np.uint8)  # copied, writable (M0: no float32 on host)
 
         f = it.get("frame")  # parsed once at initialization
         if f is None:
-            f = parse_frame(entry)  # boxes/attrs for token supervision
-        if f is None:
+            f = parse_frame(entry)
+        if transform is not None:
+            content_mask, geometry = transform.patch_metadata()
+            boxes = transform.boxes(f.boxes) if f is not None else np.empty((0, 4), np.float32)
+            attributes = (
+                [f.relevance, f.state, f.direction, f.pictogram] if f is not None else [np.empty(0)] * 4
+            )
+            tt = rasterize_attributes(boxes, *attributes, self.target_hw, content_mask)
+        elif f is None:
             tt = token_targets(
                 np.zeros((0, 4), np.float32),
                 np.zeros(0),
@@ -272,7 +299,7 @@ class DTLDGlobalDataset(Dataset):
                 f.boxes, f.relevance, f.state, self.label_crop_sides, self.target_hw, direction=f.direction
             )
 
-        return {
+        result = {
             "image": torch.from_numpy(arr).permute(2, 0, 1),  # uint8 CHW
             "label": torch.tensor(it["y"], dtype=torch.long),
             "weight": torch.tensor(it["weight"], dtype=torch.float32),
@@ -286,10 +313,35 @@ class DTLDGlobalDataset(Dataset):
             "n_lamps": it["n_lamps"],
             "path": fp,
         }
+        if transform is not None:
+            result.update(
+                content_mask=torch.from_numpy(content_mask),
+                geometry=torch.from_numpy(geometry),
+                instance_id=torch.from_numpy(tt["instance_id"]),
+                pictogram_tgt=torch.from_numpy(tt["pictogram"]),
+            )
+            result.update(
+                {
+                    key: torch.from_numpy(tt[key])
+                    for key in ("state_valid", "rel_valid", "dir_valid", "pictogram_valid")
+                }
+            )
+            result.update(
+                {
+                    key + "_instance_weight": torch.from_numpy(tt[key + "_instance_weight"])
+                    for key in ("state", "rel", "dir", "pictogram")
+                }
+            )
+            result["max_lamp_h"] = torch.tensor(
+                float((f.boxes[:, 3] - f.boxes[:, 1]).max() * transform.resized_hw[0] / SRC_H)
+                if f is not None and len(f.boxes)
+                else 0.0
+            )
+        return result
 
 
 def collate_global(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
-    return {
+    result = {
         "image": torch.stack([b["image"] for b in batch]),  # uint8
         "label": torch.stack([b["label"] for b in batch]),
         "weight": torch.stack([b["weight"] for b in batch]),
@@ -303,6 +355,23 @@ def collate_global(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
         "n_lamps": [b["n_lamps"] for b in batch],
         "path": [b["path"] for b in batch],
     }
+    for key in (
+        "content_mask",
+        "geometry",
+        "instance_id",
+        "pictogram_tgt",
+        "state_valid",
+        "rel_valid",
+        "dir_valid",
+        "pictogram_valid",
+        "state_instance_weight",
+        "rel_instance_weight",
+        "dir_instance_weight",
+        "pictogram_instance_weight",
+    ):
+        if key in batch[0]:
+            result[key] = torch.stack([b[key] for b in batch])
+    return result
 
 
 def state_histogram(items_or_ds, n_state: int = 6) -> np.ndarray:
@@ -350,6 +419,9 @@ def build_train_val_datasets(
     val_frac: float = 0.15,
     val_seed: int = 0,
     min_per_class: int = 30,
+    preprocessing: str = "legacy",
+    zoom_out_prob: float = 0.0,
+    zoom_out_min: float = 0.9,
 ) -> Tuple[DTLDGlobalDataset, DTLDGlobalDataset, Dict[str, Any]]:
     """Carve a session-disjoint val set out of the official train split.
 
@@ -371,6 +443,7 @@ def build_train_val_datasets(
         target_hw=target_hw,
         label_policy=label_policy,
         policy_weight=policy_weight,
+        preprocessing=preprocessing,
     )
     seq_of_item = [_seq_of(it["entry"].get("image_path", "")) for it in full.items]
     seqs = sorted(set(seq_of_item))
@@ -405,6 +478,9 @@ def build_train_val_datasets(
         label_policy=label_policy,
         policy_weight=policy_weight,
         items=train_items,
+        preprocessing=preprocessing,
+        zoom_out_prob=zoom_out_prob,
+        zoom_out_min=zoom_out_min,
     )
     val_ds = DTLDGlobalDataset(
         label_dir,
@@ -417,6 +493,7 @@ def build_train_val_datasets(
         label_policy=label_policy,
         policy_weight=policy_weight,
         items=val_items,
+        preprocessing=preprocessing,
     )
     info = {
         "n_train": len(train_items),

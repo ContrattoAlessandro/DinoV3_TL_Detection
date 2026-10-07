@@ -7,6 +7,7 @@ import json
 import math
 import os
 import random
+import time
 from typing import Optional
 
 import numpy as np
@@ -26,6 +27,16 @@ from .metrics import _safe_ap, fit_temperature, report, softmax_np, to_jsonable
 from .losses import consistency_kl, global_loss, token_losses
 from .model import DinoGlobal
 from .config import validate_config
+from .preprocessing import batch_model_kwargs
+from .study import selection_key
+
+
+def dataset_options(cfg):
+    return dict(
+        preprocessing=cfg["data"].get("preprocessing", "legacy"),
+        zoom_out_prob=cfg.get("augment", {}).get("zoom_out_prob", 0),
+        zoom_out_min=cfg.get("augment", {}).get("zoom_out_min", 0.9),
+    )
 
 
 def set_seed(seed: int):
@@ -85,6 +96,13 @@ def _build_model(cfg, dev, repo_root="."):
         dtype=backbone.get("dtype", "float16") if dev.type == "cuda" else "float32",
         grid_hw=(h // 16, w // 16),
         mid_layer=6,
+        spatial_context=decoder.get("spatial_context"),
+        head_kind=decoder["head"],
+        **(
+            {k: decoder[k] for k in ("context_dropout", "context_bound") if k in decoder}
+            if decoder["head"] == "v7_evidence"
+            else {}
+        ),
         **{k: decoder[k] for k in keys},
     ).to(dev)
 
@@ -136,6 +154,7 @@ def build_loaders(cfg: dict, repo_root: str = "."):
         policy_weight=float(d.get("policy_weight", 0.3)),
         val_frac=float(d.get("val_frac", 0.15)),
         val_seed=int(d.get("val_seed", 0)),
+        **dataset_options(cfg),
     )
     print(
         f"train/val split: {info['n_train']} train / {info['n_val']} val "
@@ -171,6 +190,7 @@ def build_test_loader(cfg: dict, repo_root: str = "."):
         label_crop_sides=d.get("label_crop_sides", 114),
         target_hw=(th, tw),
         label_policy=d.get("label_policy", "map_to_nor"),
+        **dataset_options(cfg),
     )
     nw, bs, pin = _loader_args(cfg)
     common = dict(
@@ -191,7 +211,7 @@ def predict_split(model: DinoGlobal, loader: DataLoader, device: torch.device):
     for batch in loader:
         img = batch["image"].to(device, non_blocking=True).float().div_(255.0)
         with torch.autocast("cuda", enabled=device.type == "cuda"):
-            out = model(img)
+            out = model(img, **batch_model_kwargs(batch, device))
         ys.append(batch["label"].numpy())
         lgs.append(out["logits"].float().cpu().numpy())
         cities.extend(batch["city"])
@@ -259,6 +279,83 @@ def state_balance_weights(tl, mode, n_state: int = 6):
     w[~nz] = 1.0
     print(f"state_balance[{mode}]: counts={counts.astype(int).tolist()} weights={np.round(w, 2).tolist()}")
     return torch.tensor(w, dtype=torch.float32)
+
+
+def global_balance_weights(log_pi, mode):
+    if mode == "none":
+        return None
+    if mode != "sqrt":
+        raise ValueError("Unknown global class weighting")
+    pi = log_pi.exp()
+    weights = pi.clamp_min(1e-8).rsqrt()
+    return weights / (pi * weights).sum()
+
+
+def pictogram_balance_weights(tl):
+    counts = np.zeros(10)
+    for item in _items_of(tl.dataset):
+        counts += np.bincount(item["frame"].pictogram, minlength=10)
+    weights = np.ones(10)
+    present = counts > 0
+    if present.any():
+        weights[present] = 1 / np.sqrt(counts[present] / counts.sum())
+        weights[present] /= weights[present].mean()
+        weights = np.minimum(weights, 3)
+    return torch.tensor(weights, dtype=torch.float32)
+
+
+def clean_probe_loader(tl, size, seed, out_dir):
+    """Frozen class-stratified probe, preferring distinct sessions per class."""
+    from .dtld import _seq_of
+    from .validation import atomic_json, digest
+
+    if not size or not isinstance(tl.dataset, DTLDGlobalDataset):
+        return None
+    items = tl.dataset.items
+    rng = np.random.default_rng(seed)
+    hist = np.bincount([it["y"] for it in items], minlength=3)
+    quotas = np.floor(hist / hist.sum() * min(size, len(items))).astype(int)
+    for i in np.argsort(-(hist / hist.sum() * min(size, len(items)) - quotas))[
+        : min(size, len(items)) - quotas.sum()
+    ]:
+        quotas[i] += 1
+    chosen = []
+    for label, quota in enumerate(quotas):
+        indices = np.flatnonzero(np.array([it["y"] for it in items]) == label)
+        indices = rng.permutation(indices).tolist()
+        seen, preferred, remainder = set(), [], []
+        for i in indices:
+            session = _seq_of(items[i]["entry"]["image_path"])
+            if session in seen:
+                remainder.append(i)
+            else:
+                preferred.append(i)
+                seen.add(session)
+        chosen.extend((preferred + remainder)[:quota])
+    chosen.sort()
+    ds = copy.copy(tl.dataset)
+    ds.items, ds.train = [items[i] for i in chosen], False
+    membership = [it["entry"]["image_path"] for it in ds.items]
+    probe_record = dict(
+        seed=seed,
+        paths=membership,
+        membership_sha256=digest(membership),
+        purpose="Clean training probe, never checkpoint selection",
+    )
+    path = os.path.join(out_dir, "clean_probe.json")
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as stream:
+            if json.load(stream) != probe_record:
+                raise ValueError("Clean probe membership changed")
+    atomic_json(path, probe_record)
+    return DataLoader(
+        ds,
+        batch_size=tl.batch_size,
+        collate_fn=collate_global,
+        shuffle=False,
+        num_workers=0,
+        pin_memory=tl.pin_memory,
+    )
 
 
 def train(
@@ -330,6 +427,8 @@ def train(
         stale_init=stale_init,
         pseudo_flags=_pseudo_flags(va_ds),
         rng_state=sd.get("rng_state") if resume else None,
+        best_selection_key=sd.get("best_selection_key") if resume else None,
+        best_diagnostic_map=sd.get("best_diagnostic_map", -1) if resume else -1,
     )
 
 
@@ -349,6 +448,8 @@ def fit(
     pseudo_flags=None,
     stale_init: int = 0,
     rng_state=None,
+    best_selection_key=None,
+    best_diagnostic_map=-1.0,
 ):
     """Training loop shared by ordinary training and city cross-validation."""
     os.makedirs(out_dir, exist_ok=True)
@@ -385,6 +486,10 @@ def fit(
     state_w = state_balance_weights(tl, lcfg.get("state_balance", "none"))
     if state_w is not None:
         state_w = state_w.to(dev)
+    class_w = global_balance_weights(log_pi, lcfg.get("class_balance", "none"))
+    class_w = class_w.to(dev) if class_w is not None else None
+    w_pictogram = float(lcfg.get("token_pictogram", 0))
+    pic_w = pictogram_balance_weights(tl).to(dev) if w_pictogram else None
     acfg = cfg.get("augment", {})
     p_erase = float(acfg.get("p_erase", 0.0))
     view_kw = dict(
@@ -418,8 +523,13 @@ def fit(
     stale = stale_init
     best_map, best_state = best_init, None
     selection_metric = o.get("early_stop_metric", "mAP")
-    if selection_metric not in ("mAP", "worst_city_mAP", "acc_bal"):
+    if selection_metric not in ("mAP", "worst_city_mAP", "acc_bal", "signal_recall"):
         raise ValueError(f"unsupported early_stop_metric {selection_metric!r}")
+    baseline = o.get("selection_baseline")
+    if selection_metric == "signal_recall" and baseline is None:
+        raise ValueError("Recall selection needs a matching DTLD validation baseline")
+    probe_loader = clean_probe_loader(tl, int(o.get("clean_probe_size", 0)), int(o.get("seed", 0)), out_dir)
+    best_key = tuple(best_selection_key) if best_selection_key is not None else None
     if dev.type == "cuda":
         torch.backends.cudnn.benchmark = True
 
@@ -427,10 +537,14 @@ def fit(
         restore_rng_state(rng_state)
 
     for ep in range(start_ep, epochs):
+        epoch_started = time.monotonic()
+        if dev.type == "cuda":
+            torch.cuda.reset_peak_memory_stats(dev)
         for g in opt.param_groups:
             g["lr"] = _lr(ep)
         model.train()
         tot = {"total": 0.0, "global": 0.0, "token": 0.0, "consist": 0.0}
+        components = {key: 0.0 for key in ("lamp", "state", "rel", "dir", "pictogram")}
         nstep, nbatch = 0, 0
         opt.zero_grad(set_to_none=True)
         nbatch_total = len(tl) if hasattr(tl, "__len__") else None
@@ -444,20 +558,42 @@ def fit(
             rel_t = batch["rel_tgt"].to(dev, non_blocking=True)
             dir_t = batch.get("dir_tgt")
             dir_t = dir_t.to(dev, non_blocking=True) if dir_t is not None else None
+            metadata = batch_model_kwargs(batch, dev)
+            attribute_masks = {
+                key: batch[key].to(dev, non_blocking=True)
+                for key in ("state_valid", "rel_valid", "dir_valid", "pictogram_valid")
+                if key in batch
+            }
+            instance_id = batch["instance_id"].to(dev) if "instance_id" in batch else None
+            instance_weights = {
+                key: batch[key + "_instance_weight"].to(dev)
+                for key in ("state", "rel", "dir", "pictogram")
+                if key + "_instance_weight" in batch
+            }
+            pictogram_t = batch["pictogram_tgt"].to(dev) if "pictogram_tgt" in batch else None
             if p_erase > 0:
                 # manufactured NoR: erase ALL lamps of a frame -> genuine
                 # "no relevant lamp" case, label and token targets follow the
                 # pixels. Applied before the views so both consistency views
                 # see the same (frame, label) pair.
+                before_erasure = lamp_t.reshape(len(x), -1).sum(1)
                 x, y, w, lamp_t, valid_t, rel_t = apply_lamp_erasure(
                     x, lamp_t, y, w, lamp_t, valid_t, rel_t, p_erase
                 )
+                if "content_mask" in metadata:
+                    erased = (before_erasure > 0) & (lamp_t.reshape(len(x), -1).sum(1) == 0)
+                    valid_t = valid_t & metadata["content_mask"]
+                    for key in attribute_masks:
+                        attribute_masks[key] = attribute_masks[key].clone()
+                        attribute_masks[key][erased] = metadata["content_mask"][erased]
+            if class_w is not None:
+                w = w * class_w[y]
             # view 1 carries the token-level aux losses, so it must NOT be
             # geometrically cropped: the token targets are rasterised on the
             # uncropped frame (measured: 0.780 -> 0.005 lamp-hit-rate when cropped).
             x1 = train_view(x, **view_kw)
             with torch.autocast("cuda", enabled=use_amp):
-                out = model(x1)
+                out = model(x1, **metadata)
                 g_loss = global_loss(out["logits"], y, log_pi, tau_la, smoothing, w)
                 loss = g_loss
                 t_loss = torch.zeros((), device=dev)
@@ -467,36 +603,48 @@ def fit(
                     # frames automatically lose their state/dir supervision.
                     supervised_maps = out.get("branch_maps") if branch_supervision else None
                     supervised_maps = supervised_maps or [out["maps"]]
-                    t_loss = torch.stack(
-                        [
-                            token_losses(
-                                mp,
-                                lamp_t,
-                                valid_t,
-                                state_t,
-                                rel_t,
-                                w_lamp,
-                                w_state,
-                                w_rel,
-                                float(lcfg.get("lamp_pos_weight", 10.0)),
-                                rel_pw,
-                                rel_focal_gamma=rel_gamma,
-                                w_dir=w_dir,
-                                dir_tgt=dir_t,
-                                state_weights=state_w,
-                                state_rel_boost=state_boost,
-                                rel_lamp_weight=lcfg.get("rel_lamp_weight"),
-                            )["total"]
-                            for mp in supervised_maps
-                        ]
-                    ).mean()
+                    token_components = [
+                        token_losses(
+                            mp,
+                            lamp_t,
+                            valid_t,
+                            state_t,
+                            rel_t,
+                            w_lamp,
+                            w_state,
+                            w_rel,
+                            float(lcfg.get("lamp_pos_weight", 10.0)),
+                            rel_pw,
+                            rel_focal_gamma=rel_gamma,
+                            w_dir=w_dir,
+                            dir_tgt=dir_t,
+                            state_weights=state_w,
+                            state_rel_boost=state_boost,
+                            rel_lamp_weight=lcfg.get("rel_lamp_weight"),
+                            valid_masks=attribute_masks or None,
+                            instance_id=instance_id,
+                            reduction=lcfg.get("attribute_reduction", "token"),
+                            pictogram_tgt=pictogram_t,
+                            pictogram_weights=pic_w,
+                            w_pictogram=w_pictogram,
+                            instance_weights=instance_weights,
+                        )
+                        for mp in supervised_maps
+                    ]
+                    t_loss = torch.stack([part["total"] for part in token_components]).mean()
+                    for key in components:
+                        components[key] += float(
+                            torch.stack(
+                                [part.get(key, t_loss.new_zeros(())) for part in token_components]
+                            ).mean()
+                        )
                     loss = loss + t_loss
                 c_loss = torch.zeros((), device=dev)
                 if w_consist > 0 or supervise_view2:
                     # Both views retain the full frame: a crop can remove the
                     # only relevant lamp and invalidate an existential label.
                     x2 = train_view(x, **view_kw)
-                    out2 = model(x2)
+                    out2 = model(x2, **metadata)
                     if supervise_view2:
                         g2 = global_loss(out2["logits"], y, log_pi, tau_la, smoothing, w)
                         loss = loss - g_loss + (g_loss + g2) * 0.5
@@ -530,6 +678,10 @@ def fit(
         live = copy.deepcopy(model.head.state_dict())
         model.head.load_state_dict(ema.state_dict())
         ys, lgs, meta = predict_split(model, vl, dev)
+        probe_report = None
+        if probe_loader is not None:
+            py, pl, pm = predict_split(model, probe_loader, dev)
+            probe_report = report(py, pl, cities=pm["cities"])
         model.head.load_state_dict(live)
         rep = report(ys, lgs, cities=meta["cities"], max_lamp_h=meta["max_lamp_h"])
         met = rep["metrics"]
@@ -577,12 +729,19 @@ def fit(
         met["temperature"] = T  # divide logits by T for calibrated probs
         met["ece_calibrated"] = rep_cal["metrics"]["ece"]
 
-        score = worst_city if selection_metric == "worst_city_mAP" else met[selection_metric]
+        if selection_metric == "signal_recall":
+            key = selection_key(rep, baseline, ep + 1)
+            score = key[0] if key is not None else -1.0
+            improved = key is not None and (best_key is None or key > best_key)
+        else:
+            key = None
+            score = worst_city if selection_metric == "worst_city_mAP" else met[selection_metric]
+            improved = score > best_map
         if not math.isfinite(score):
             raise ValueError(f"selection metric {selection_metric} is undefined on validation")
-        improved = score > best_map
         if improved:
             best_map = score
+            best_key = key
             stale = 0
         else:
             stale += 1
@@ -598,7 +757,13 @@ def fit(
             "best_score": best_map,
             "selection_metric": selection_metric,
             "stale_epochs": stale,
+            "best_selection_key": best_key,
+            "selection_eligible": key is not None if selection_metric == "signal_recall" else True,
+            "best_diagnostic_map": max(best_diagnostic_map, met["mAP"]),
         }
+        if selection_metric == "signal_recall" and met["mAP"] > best_diagnostic_map:
+            best_diagnostic_map = met["mAP"]
+            torch.save(state, os.path.join(out_dir, "best_unconstrained.pt"))
         if improved:
             best_state = state
             torch.save(state, os.path.join(out_dir, "best.pt"))
@@ -615,6 +780,16 @@ def fit(
                             "epoch": ep + 1,
                             **{k: v for k, v in met.items() if isinstance(v, (int, float))},
                             "worst_city_mAP": worst_city,
+                            "selection_score": score,
+                            "selection_eligible": state["selection_eligible"],
+                            "training_losses": {k: v / max(nbatch, 1) for k, v in tot.items()},
+                            "attribute_losses": {k: v / max(nbatch, 1) for k, v in components.items()},
+                            "clean_probe": to_jsonable(probe_report),
+                            "validation": to_jsonable(rep),
+                            "elapsed_seconds": time.monotonic() - epoch_started,
+                            "peak_gpu_allocated_bytes": torch.cuda.max_memory_allocated(dev)
+                            if dev.type == "cuda"
+                            else 0,
                         }
                     )
                 )

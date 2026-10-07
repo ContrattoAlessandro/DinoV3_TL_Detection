@@ -1,0 +1,73 @@
+domain,model,true,predicted,count
+DTLD fold-0 validation,v5_fold0,RR,RR,1903
+DTLD fold-0 validation,v5_fold0,RR,RG,162
+DTLD fold-0 validation,v5_fold0,RR,NoR,227
+DTLD fold-0 validation,v5_fold0,RG,RR,186
+DTLD fold-0 validation,v5_fold0,RG,RG,3798
+DTLD fold-0 validation,v5_fold0,RG,NoR,453
+DTLD fold-0 validation,v5_fold0,NoR,RR,98
+DTLD fold-0 validation,v5_fold0,NoR,RG,59
+DTLD fold-0 validation,v5_fold0,NoR,NoR,146
+DTLD fold-0 validation,v6_axial_fold0,RR,RR,1964
+DTLD fold-0 validation,v6_axial_fold0,RR,RG,160
+DTLD fold-0 validation,v6_axial_fold0,RR,NoR,168
+DTLD fold-0 validation,v6_axial_fold0,RG,RR,166
+DTLD fold-0 validation,v6_axial_fold0,RG,RG,3981
+DTLD fold-0 validation,v6_axial_fold0,RG,NoR,290
+DTLD fold-0 validation,v6_axial_fold0,NoR,RR,97
+DTLD fold-0 validation,v6_axial_fold0,NoR,RG,72
+DTLD fold-0 validation,v6_axial_fold0,NoR,NoR,134
+DTLD official test,v5_fold0,RR,RR,3568
+DTLD official test,v5_fold0,RR,RG,375
+DTLD official test,v5_fold0,RR,NoR,416
+DTLD official test,v5_fold0,RG,RR,304
+DTLD official test,v5_fold0,RG,RG,6558
+DTLD official test,v5_fold0,RG,NoR,707
+DTLD official test,v5_fold0,NoR,RR,121
+DTLD official test,v5_fold0,NoR,RG,100
+DTLD official test,v5_fold0,NoR,NoR,304
+DTLD official test,v6_axial_fold0,RR,RR,3721
+DTLD official test,v6_axial_fold0,RR,RG,391
+DTLD official test,v6_axial_fold0,RR,NoR,247
+DTLD official test,v6_axial_fold0,RG,RR,232
+DTLD official test,v6_axial_fold0,RG,RG,6944
+DTLD official test,v6_axial_fold0,RG,NoR,393
+DTLD official test,v6_axial_fold0,NoR,RR,127
+DTLD official test,v6_axial_fold0,NoR,RG,125
+DTLD official test,v6_axial_fold0,NoR,NoR,273
+ATLAS transfer,v5_fold0,RR,RR,164
+ATLAS transfer,v5_fold0,RR,RG,8
+ATLAS transfer,v5_fold0,RR,NoR,73
+ATLAS transfer,v5_fold0,RG,RR,12
+ATLAS transfer,v5_fold0,RG,RG,55
+ATLAS transfer,v5_fold0,RG,NoR,28
+ATLAS transfer,v5_fold0,NoR,RR,7
+ATLAS transfer,v5_fold0,NoR,RG,3
+ATLAS transfer,v5_fold0,NoR,NoR,178
+ATLAS transfer,v6_axial_fold0,RR,RR,134
+ATLAS transfer,v6_axial_fold0,RR,RG,5
+ATLAS transfer,v6_axial_fold0,RR,NoR,106
+ATLAS transfer,v6_axial_fold0,RG,RR,7
+ATLAS transfer,v6_axial_fold0,RG,RG,46
+ATLAS transfer,v6_axial_fold0,RG,NoR,42
+ATLAS transfer,v6_axial_fold0,NoR,RR,12
+ATLAS transfer,v6_axial_fold0,NoR,RG,4
+ATLAS transfer,v6_axial_fold0,NoR,NoR,172
+VZC-TLD published test,v5_fold0,RR,RR,221
+VZC-TLD published test,v5_fold0,RR,RG,12
+VZC-TLD published test,v5_fold0,RR,NoR,98
+VZC-TLD published test,v5_fold0,RG,RR,21
+VZC-TLD published test,v5_fold0,RG,RG,84
+VZC-TLD published test,v5_fold0,RG,NoR,71
+VZC-TLD published test,v5_fold0,NoR,RR,6
+VZC-TLD published test,v5_fold0,NoR,RG,6
+VZC-TLD published test,v5_fold0,NoR,NoR,79
+VZC-TLD published test,v6_axial_fold0,RR,RR,132
+VZC-TLD published test,v6_axial_fold0,RR,RG,11
+VZC-TLD published test,v6_axial_fold0,RR,NoR,188
+VZC-TLD published test,v6_axial_fold0,RG,RR,10
+VZC-TLD published test,v6_axial_fold0,RG,RG,66
+VZC-TLD published test,v6_axial_fold0,RG,NoR,100
+VZC-TLD published test,v6_axial_fold0,NoR,RR,7
+VZC-TLD published test,v6_axial_fold0,NoR,RG,7
+VZC-TLD published test,v6_axial_fold0,NoR,NoR,77

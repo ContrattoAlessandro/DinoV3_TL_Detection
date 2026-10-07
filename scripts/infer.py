@@ -10,7 +10,8 @@ import torch
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 from dinov3_global.engine import load_model
-from dinov3_global.inference import overlay, preprocess
+from dinov3_global.inference import overlay
+from dinov3_global.preprocessing import preprocess_for_config
 from dinov3_global.metrics import softmax_np
 
 CLASSES = ["RR", "RG", "NoR"]
@@ -48,8 +49,9 @@ def main():
         writer.writerow(["file", "P_RR", "P_RG", "P_NoR", "pred", "logit_RR", "logit_RG", "logit_NoR"])
         with torch.inference_mode(), torch.autocast(device.type, enabled=device.type == "cuda"):
             for index, path in enumerate(files):
-                image, visible = preprocess(path, args.crop_sides, tuple(cfg["data"]["target_hw"]))
-                result = model(image.unsqueeze(0).to(device).float().div_(255))
+                image, visible, metadata = preprocess_for_config(path, cfg, args.crop_sides)
+                metadata = {k: v.unsqueeze(0).to(device) for k, v in metadata.items()}
+                result = model(image.unsqueeze(0).to(device).float().div_(255), **metadata)
                 logits = result["logits"][0].float().cpu().numpy()
                 probabilities = softmax_np((logits / temperature)[None])[0]
                 predicted = CLASSES[int(probabilities.argmax())]
@@ -65,7 +67,11 @@ def main():
                     ):
                         output = args.out / "overlays" / relative.parent / f"{relative.stem}_{name}.jpg"
                         output.parent.mkdir(parents=True, exist_ok=True)
-                        overlay(visible, result["maps"][key][0].float().cpu().numpy()).save(output)
+                        overlay(
+                            visible,
+                            result["maps"][key][0].float().cpu().numpy(),
+                            size=(visible.shape[1], visible.shape[0]),
+                        ).save(output)
                 if (index + 1) % 200 == 0:
                     print(f"{index + 1}/{len(files)}")
     print(f"Predictions: {args.out / 'predictions.csv'}; counts={dict(counts)}; T={temperature:.4f}")

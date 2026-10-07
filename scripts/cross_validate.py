@@ -15,9 +15,11 @@ from torch.utils.data import DataLoader
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
-from dinov3_global.config import load_config
+from dinov3_global.config import load_config, architecture_name
 from dinov3_global.data import DTLDGlobalDataset, class_frequencies, collate_global
 from dinov3_global.engine import _build_model, _make_sampler, fit, predict_split, set_seed, _pseudo_flags
+from dinov3_global.engine import dataset_options
+from dinov3_global.study import baseline_gate
 from dinov3_global.metrics import report
 from dinov3_global.validation import make_folds, digest, atomic_json, fold_manifest
 from dinov3_global.runtime import loader_kwargs, validate_runtime, set_training_threads
@@ -69,6 +71,7 @@ def main():
         target_hw=(th, tw),
         label_policy=d.get("label_policy", "map_to_nor"),
         policy_weight=float(d.get("policy_weight", 0.3)),
+        **dataset_options(cfg),
     )
     folds, by_city = make_folds(full.items, args.folds)
     if args.max_items and args.max_items < len(full.items):
@@ -81,7 +84,21 @@ def main():
     manifest = fold_manifest(full.items, folds, d, annotation_sha)
     manifest_path = args.fold_manifest or Path(out_root, "fold_manifest.json")
     if manifest_path.exists():
-        if json.loads(manifest_path.read_text(encoding="utf-8")) != manifest:
+        reference = json.loads(manifest_path.read_text(encoding="utf-8"))
+        membership_keys = (
+            "source_split",
+            "annotation_sha256",
+            "items_sha256",
+            "n_items",
+            "class_names",
+            "folds",
+        )
+        matches = (
+            all(reference[key] == manifest[key] for key in membership_keys)
+            if d.get("preprocessing") == "letterbox"
+            else reference == manifest
+        )
+        if not matches:
             raise ValueError("fold manifest differs from current data; use a new experiment")
     else:
         atomic_json(manifest_path, manifest)
@@ -90,6 +107,14 @@ def main():
     if config_path.exists() and json.loads(config_path.read_text()) != cfg:
         raise ValueError("effective config differs from existing run; use a new --out")
     atomic_json(config_path, cfg)
+    sources = {
+        str(p.relative_to(repo_root)).replace("\\", "/"): hashlib.sha256(p.read_bytes()).hexdigest()
+        for p in [Path(__file__), *sorted(Path(repo_root, "src/dinov3_global").glob("*.py"))]
+    }
+    source_path = Path(out_root, "source_manifest.json")
+    if source_path.exists() and json.loads(source_path.read_text()) != sources:
+        raise ValueError("Training sources differ from existing run; use a new --out")
+    atomic_json(source_path, sources)
     if args.audit_only:
         print(f"Audited {len(full)} frames, {len(folds)} folds -> {manifest_path}")
         return
@@ -107,6 +132,7 @@ def main():
         maps = [r["metrics"]["mAP"] for r in results.values()]
         abals = [r["metrics"]["acc_bal"] for r in results.values()]
         summary = {
+            "architecture": architecture_name(cfg),
             "folds": results,
             "completed_folds": len(results),
             "total_folds": args.folds,
@@ -155,6 +181,7 @@ def main():
             label_policy=d.get("label_policy", "map_to_nor"),
             policy_weight=float(d.get("policy_weight", 0.3)),
             items=tr_items,
+            **dataset_options(cfg),
         )
         va_ds = DTLDGlobalDataset(
             ld,
@@ -167,6 +194,7 @@ def main():
             label_policy=d.get("label_policy", "map_to_nor"),
             policy_weight=float(d.get("policy_weight", 0.3)),
             items=va_items,
+            **dataset_options(cfg),
         )
         bs = int(cfg["optim"].get("batch", 2))
         common = dict(collate_fn=collate_global, **loader_kwargs(cfg, runtime))
@@ -177,6 +205,23 @@ def main():
         log_pi = torch.log(torch.tensor(class_frequencies(tr_ds), dtype=torch.float32) + 1e-8)
         fold_cfg = copy.deepcopy(cfg)
         fold_cfg["optim"]["seed"] = int(cfg["optim"].get("seed", 0)) + fi
+        if fold_cfg["optim"].get("early_stop_metric") == "signal_recall":
+            reference = Path(
+                repo_root, fold_cfg["optim"]["selection_reference"], f"fold{fi}", "val_predictions.npz"
+            )
+            with np.load(reference, allow_pickle=False) as predictions:
+                expected_names = [Path(it["entry"]["image_path"]).stem for it in va_items]
+                actual_names = [Path(path).stem for path in predictions["paths"].tolist()]
+                if actual_names != expected_names or predictions["labels"].tolist() != [
+                    it["y"] for it in va_items
+                ]:
+                    raise ValueError("Validation selection baseline membership differs")
+                fold_cfg["optim"]["selection_baseline"] = baseline_gate(
+                    report(predictions["labels"], predictions["logits"])
+                )
+                fold_cfg["optim"]["selection_baseline_sha256"] = hashlib.sha256(
+                    reference.read_bytes()
+                ).hexdigest()
         # Keep initialisation on the original CPU threading setting. Runtime
         # tuning applies only after the head has been created/restored.
         torch.set_num_threads(initial_cpu_threads)
@@ -199,6 +244,8 @@ def main():
                 best_init=sd["best_score"],
                 stale_init=sd.get("stale_epochs", 0),
                 rng_state=sd.get("rng_state"),
+                best_selection_key=sd.get("best_selection_key"),
+                best_diagnostic_map=sd.get("best_diagnostic_map", -1),
             )
             del sd
         set_training_threads(runtime)
@@ -222,15 +269,21 @@ def main():
             )
 
         # final fold report from best.pt
-        sd = torch.load(os.path.join(fold_dir, "best.pt"), map_location="cpu", weights_only=True)
+        eligible = Path(fold_dir, "best.pt").exists()
+        chosen_path = Path(fold_dir, "best.pt" if eligible else "best_unconstrained.pt")
+        sd = torch.load(chosen_path, map_location="cpu", weights_only=True)
         model.head.load_state_dict(sd["ema"])
         ys, lgs, meta = predict_split(model, vl, dev)
         rep = report(ys, lgs, cities=meta["cities"], max_lamp_h=meta["max_lamp_h"])
         results[f"fold{fi}"] = {
+            "architecture": architecture_name(fold_cfg),
             "val_cities": cities,
             "metrics": rep["metrics"],
             "slices": rep.get("slices", {}),
             "best_epoch": sd["epoch"],
+            "eligible": eligible,
+            "checkpoint_role": "selected" if eligible else "unconstrained diagnostic; not promotable",
+            "selection_key": sd.get("best_selection_key"),
             "seed": fold_cfg["optim"]["seed"],
             "audit": manifest["folds"][fi],
         }

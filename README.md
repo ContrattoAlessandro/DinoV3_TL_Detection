@@ -10,8 +10,10 @@ small signals, while bounded scene-context paths incorporate global information.
 Lamp boxes and attributes supervise the head during training. Inference requires
 only an RGB image.
 
-This repository contains one architecture: **v5**, the default implementation
-described below. The canonical configuration is [configs/default.yaml](configs/default.yaml).
+The default **v5** baseline is described below, with canonical configuration
+[configs/default.yaml](configs/default.yaml). The optional **v6_axial** variant adds
+shared spatial attention to relevance only; its matched fold-0 pilot uses
+[configs/spatial_axial.yaml](configs/spatial_axial.yaml).
 
 ## Task definition
 
@@ -85,6 +87,35 @@ Head-added positions and geometry enter the relevance path; the backbone's own
 positional encoding remains part of all visual features. During training, the
 entire scene vector is zeroed independently for each image with probability
 0.3, without rescaling, across all scene-dependent head paths.
+
+#### Optional relevance-only axial context
+
+`v6_axial` computes two shared axial blocks over the complete 45×80 grid. Each
+block uses four-head row attention, four-head column attention, and a width-384
+feed-forward network, with pre-LayerNorm, residual connections, and dropout 0.2.
+Writing the existing CLS gate as $A$, the shared residual is
+$\Delta=\operatorname{Axial}(h\odot A+P)-(h\odot A+P)$.
+Each branch adds this residual to $\widetilde z^{(b)}$ before predicting relevance.
+Lamp, state, and direction MLP inputs remain unchanged. The head has 1,380,739
+trainable parameters, including 891,264 parameters in the shared spatial module.
+Missing `decoder.spatial_context` settings preserve v5 checkpoint compatibility.
+
+The frozen DINOv3 features already incorporate spatial attention. This variant
+tests whether additional trainable spatial reasoning improves relevance; no
+explicit lane geometry or lane-association supervision is added.
+
+Run the matched twelve-epoch pilot and fixed-checkpoint evaluation suite with:
+
+```bash
+python scripts/smoke_axial.py
+python scripts/run_axial_pilot.py
+```
+
+Use `python scripts/run_axial_pilot.py --resume` to resume the pilot. It trains
+only fold 0, selects its best EMA checkpoint by validation mAP, then evaluates
+DTLD official test, all 528 ATLAS labels, and VZC-TLD. Separate logs and artifacts
+are written under `runs/v6_axial_pilot`; the comparison is exported under
+`docs/results/spatial_axial_pilot`. The published v5 results remain the baseline.
 
 Each branch constructs evidence for the two signal classes:
 
@@ -369,6 +400,13 @@ annotation policies differ across datasets, so their scores are not directly
 interchangeable. See [docs/evaluation.md](docs/evaluation.md) for the complete protocol.
 
 ## Development
+
+The DTLD-only recall/generalization study is implemented in
+[docs/generalization_study.md](docs/generalization_study.md), with four staged
+ablations, validation-gated checkpoint selection and a fixed promotion rule.
+Run `python -B -u scripts/run_generalization_study.py` and use `--resume` to
+continue the same study. Existing v5 and axial results remain the reference;
+the proposed changes require measured acceptance before promotion.
 
 ```sh
 python -m pip install -e ".[dev]"

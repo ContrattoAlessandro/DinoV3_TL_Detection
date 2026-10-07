@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 from torch.utils.data import DataLoader
 
 from dinov3_global.backbone import BACKBONE_ID, BACKBONE_REVISION
-from dinov3_global.config import validate_config
+from dinov3_global.config import validate_config, architecture_name
 from dinov3_global.data import collate_global
 from dinov3_global.engine import build_test_loader, load_model
 from dinov3_global.evaluation import audit_test_split, portable_path, predict_heads, sha256_file, write_json
@@ -119,19 +119,21 @@ def main():
     plan = dict(
         schema_version=1,
         frozen_at_utc=datetime.now(timezone.utc).isoformat(),
-        architecture="v5",
+        architecture=architecture_name(cfg),
         split="DTLD v2.0 official test",
         checkpoints=members,
         predictor="mean raw logits, then softmax" if len(members) > 1 else "single EMA head",
         primary_temperature=1.0,
-        checkpoint_selection="Highest city-validation EMA mAP at T=1; fixed before test inference",
+        checkpoint_selection=f"City-validation EMA {states[0].get('selection_metric', 'mAP')} at T=1; fixed before test inference",
         test_fitting=False,
         calibration="None for primary metrics; no test-fitted temperature or thresholds",
         backbone=dict(hf_id=BACKBONE_ID, revision=BACKBONE_REVISION),
         data=cfg["data"],
         runtime_loader=runtime or cfg.get("loader", {}),
         batch_size=tel.batch_size,
-        precision="CUDA float16 autocast" if dev.type == "cuda" else "CPU float32",
+        precision=f"CUDA {torch.get_autocast_dtype('cuda')} autocast"
+        if dev.type == "cuda"
+        else "CPU float32",
         device=str(dev),
         gpu=torch.cuda.get_device_name(dev) if dev.type == "cuda" else None,
         environment=dict(
@@ -166,6 +168,9 @@ def main():
                 "src/dinov3_global/runtime.py",
                 "src/dinov3_global/config.py",
                 "src/dinov3_global/engine.py",
+                "src/dinov3_global/preprocessing.py",
+                "src/dinov3_global/evidence_head.py",
+                "src/dinov3_global/study.py",
             )
         },
         data_audit=audit,
