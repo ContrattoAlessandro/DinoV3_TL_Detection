@@ -29,11 +29,18 @@ def sha256_file(path):
 
 
 def write_json(path, value):
-    """Atomic progress/provenance writes remain readable during long runs."""
+    """Write atomically, retrying transient Windows reader/antivirus locks."""
     path = Path(path)
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(value, indent=2, allow_nan=False) + "\n", encoding="utf-8")
-    temporary.replace(path)
+    for attempt in range(8):
+        try:
+            temporary.replace(path)
+            return
+        except PermissionError:
+            if attempt == 7:
+                raise
+            time.sleep(0.05 * 2**attempt)
 
 
 def portable_path(path, repo_root):
@@ -156,7 +163,7 @@ def predict_heads(model, heads, loader, device, repo_root, progress=None):
     model.eval()
     for head in heads:
         head.eval()
-    ys, logits, cities, sizes, paths = [], [[] for _ in heads], [], [], []
+    ys, logits, cities, sizes, paths, target_sizes = [], [[] for _ in heads], [], [], [], []
     verification, original_head = [], model.head
     started = time.monotonic()
     processed, last_update = 0, 0.0
@@ -189,6 +196,9 @@ def predict_heads(model, heads, loader, device, repo_root, progress=None):
             collected.append(output.float().cpu().numpy())
         cities.extend(batch["city"])
         sizes.append(batch["max_lamp_h"].numpy())
+        target_sizes.append(
+            batch.get("target_lamp_h", torch.full((len(batch["label"]),), float("nan"))).numpy()
+        )
         paths.extend(portable_path(path, repo_root) for path in batch["path"])
         processed += len(batch["label"])
         elapsed = time.monotonic() - started
@@ -208,6 +218,11 @@ def predict_heads(model, heads, loader, device, repo_root, progress=None):
     return (
         np.concatenate(ys),
         [np.concatenate(member) for member in logits],
-        dict(cities=cities, max_lamp_h=np.concatenate(sizes), paths=paths),
+        dict(
+            cities=cities,
+            max_lamp_h=np.concatenate(sizes),
+            target_lamp_h=np.concatenate(target_sizes),
+            paths=paths,
+        ),
         dict(first_batch_images=len(ys[0]), members=verification, elapsed_seconds=time.monotonic() - started),
     )

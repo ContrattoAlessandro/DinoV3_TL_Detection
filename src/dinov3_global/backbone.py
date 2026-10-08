@@ -1,4 +1,4 @@
-"""Frozen DINOv3 ViT-S+/16: CLS and patch features at layer 6 and the final layer.
+"""Frozen DINOv3 ViT features at layer 6 and the final layer.
 Register tokens are excluded from the downstream head. RGB inputs are
 normalized internally with ImageNet mean and standard deviation."""
 
@@ -10,8 +10,23 @@ import torch
 import torch.nn as nn
 
 PATCH_GRID = (45, 80)  # 720/16, 1280/16
-BACKBONE_ID = "facebook/dinov3-vits16plus-pretrain-lvd1689m"
-BACKBONE_REVISION = "c93d816fc9e567563bc068f01475bec89cc634a6"
+BACKBONE_ID = "facebook/dinov3-vitb16-pretrain-lvd1689m"
+BACKBONE_REVISION = "5931719e67bbdb9737e363e781fb0c67687896bc"
+BACKBONE_SPECS = {
+    BACKBONE_ID: {"revision": BACKBONE_REVISION, "dim": 768, "patch": 16},
+    "facebook/dinov3-vits16plus-pretrain-lvd1689m": {
+        "revision": "c93d816fc9e567563bc068f01475bec89cc634a6",
+        "dim": 384,
+        "patch": 16,
+    },
+}
+
+
+def backbone_spec(hf_id):
+    """Return the immutable pretrained identity for a supported encoder."""
+    if hf_id not in BACKBONE_SPECS:
+        raise ValueError(f"Unsupported DINOv3 backbone: {hf_id}")
+    return dict(hf_id=hf_id, **BACKBONE_SPECS[hf_id])
 
 
 class DinoV3Backbone(nn.Module):
@@ -27,6 +42,8 @@ class DinoV3Backbone(nn.Module):
         super().__init__()
         from transformers import AutoModel
 
+        spec = backbone_spec(hf_id)
+        self.revision = spec["revision"]
         self.hf_id = local_ckpt or hf_id
         self.grid_hw = tuple(grid_hw)
         self.n_patch = self.grid_hw[0] * self.grid_hw[1]
@@ -39,7 +56,7 @@ class DinoV3Backbone(nn.Module):
                 attn_implementation=attn_implementation,
                 dtype=torch_dtype,
                 trust_remote_code=False,
-                revision=None if local_ckpt else BACKBONE_REVISION,
+                revision=None if local_ckpt else self.revision,
             )
         except OSError as e:
             msg = str(e)
@@ -56,6 +73,8 @@ class DinoV3Backbone(nn.Module):
                 ) from e
             raise
         self.dim = int(self.net.config.hidden_size)
+        if self.dim != spec["dim"]:
+            raise ValueError(f"Loaded backbone width {self.dim} differs from {hf_id}: {spec['dim']}")
         for p in self.parameters():
             p.requires_grad_(False)
         self.eval()

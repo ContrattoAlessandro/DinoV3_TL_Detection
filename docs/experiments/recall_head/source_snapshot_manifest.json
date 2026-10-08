@@ -1,0 +1,214 @@
+{
+  "scope": "Final experimental source after metadata-loading repair; preserved before publication cleanup. Archived code is not an active package entry point.",
+  "archive_sha256": "f347c75c9729f053c845ac0849d66da040b65575e78f49f1b0ea6751c381d9ec",
+  "files": [
+    {
+      "path": "src/dinov3_global/augment.py",
+      "sha256": "72aa2d8a7e8f32fced3b96f9a5c4d0651974895425f131bbe40a963f0f3cd2d3"
+    },
+    {
+      "path": "src/dinov3_global/backbone.py",
+      "sha256": "fcd3ef786bf605e67659fad158a4382fea74fee4cfa8e8ea9e7739e081ccca17"
+    },
+    {
+      "path": "src/dinov3_global/comparison.py",
+      "sha256": "623ad546c88315d3541e63bc92cebd848dcafebba5e18cf13e04728ed969050c"
+    },
+    {
+      "path": "src/dinov3_global/config.py",
+      "sha256": "b147bdde3d90d5ed2c2560b6cd290f62673f192668cabce2aaa107ef540ded0c"
+    },
+    {
+      "path": "src/dinov3_global/data.py",
+      "sha256": "97f4de59887089f5c03560ef1a48389dda12291d0fff953f28d9a037cda282aa"
+    },
+    {
+      "path": "src/dinov3_global/dtld.py",
+      "sha256": "5ca0972c3f20a81c5baf5535fdd0d9d3cf470bf159e790434c9f708ff158a098"
+    },
+    {
+      "path": "src/dinov3_global/engine.py",
+      "sha256": "b7f804c163c33451a3d3bf8f189fd2941a8405170501e1f05f662eb7cadc919b"
+    },
+    {
+      "path": "src/dinov3_global/evaluation.py",
+      "sha256": "56c159e7c68d0992251a7c4a21b16f3b563f4993d22aaf13f47bf100934a55bd"
+    },
+    {
+      "path": "src/dinov3_global/head.py",
+      "sha256": "604be9dea2ca6893d3125ec576e840c0c38136c28b4a3bc0f6acb4caa908c1af"
+    },
+    {
+      "path": "src/dinov3_global/inference.py",
+      "sha256": "c9370c0dd75e2981e7cc60fb3db402dbd6c2fe48c20ecc60479b515ebabc2b3a"
+    },
+    {
+      "path": "src/dinov3_global/losses.py",
+      "sha256": "d17dae91ac65165b9d36fc1087918f3227a8b51928ecf7b7e4eb52acadf0cab2"
+    },
+    {
+      "path": "src/dinov3_global/metrics.py",
+      "sha256": "c33005ed25d5a32134af952df7678c2509a5ed7607ad2c1f13e29829bb454e7b"
+    },
+    {
+      "path": "src/dinov3_global/model.py",
+      "sha256": "cf9435201edbb06021e986095e81f15eaabe37651ac20e5b9a6457e914dd1b32"
+    },
+    {
+      "path": "src/dinov3_global/pooling.py",
+      "sha256": "e7812a5c062fdf409c38cfec23159fdc2e28b13e3e578934d88ba35e74c9cd7d"
+    },
+    {
+      "path": "src/dinov3_global/preprocessing.py",
+      "sha256": "abb382fee6a1235e6ff333f935d9a5ed11dda8e7cbf4b0a1bf720ac4f59a577b"
+    },
+    {
+      "path": "src/dinov3_global/runtime.py",
+      "sha256": "71e5bcfb6f17b889a424be75c44a3380b8c950497e77972295870669c404c250"
+    },
+    {
+      "path": "src/dinov3_global/selection.py",
+      "sha256": "847a0a63aa163ce18aedbe6db7bca54437022aae20e3a13f73de81a483b40a1c"
+    },
+    {
+      "path": "src/dinov3_global/validation.py",
+      "sha256": "14af671a743415048163ca8fa85ca1c2dd7ad0fe9b1405d8a88a3047888f815b"
+    },
+    {
+      "path": "src/dinov3_global/__init__.py",
+      "sha256": "ab8ffd253b648b59ba695f9ef32ca7ef5e6ce53629bce9156e4efc8b26535972"
+    },
+    {
+      "path": "scripts/annotate_ood.py",
+      "sha256": "e323e3d868097095eb09029f273d305e0b16bdda4e21f641c0c85da485418521"
+    },
+    {
+      "path": "scripts/backbone_pilot.py",
+      "sha256": "a8f87564db6e6137eca0aa11f8728bcc6a7c065938dabb6c92b3f0471b8779a5"
+    },
+    {
+      "path": "scripts/cross_validate.py",
+      "sha256": "39645d5b1558584017f9795eb68119734b9db852d4714e41e2a5b6a4a12bb37c"
+    },
+    {
+      "path": "scripts/download_vzc.py",
+      "sha256": "52691541c403343074637ea7b22c417ad76a919e26982643daa986da795b56d9"
+    },
+    {
+      "path": "scripts/evaluate.py",
+      "sha256": "8cec1897f79aabd13cd81d5c4ec559e4ba7453e925dc510ce03c7138bdb4e699"
+    },
+    {
+      "path": "scripts/evaluate_ood.py",
+      "sha256": "3295a9ae6e9083863a1427601bd00efb95f4f1d3e31e1eea3ce8bd51513ddeda"
+    },
+    {
+      "path": "scripts/evaluate_vzc.py",
+      "sha256": "d5fccf8fc0acc8f3c87d97c2057536a776045f6ef5cc8d01f1e401bdd72e6513"
+    },
+    {
+      "path": "scripts/infer.py",
+      "sha256": "3867de3b70d5a56fe04ae9f592a8aff43fe67f0d103f118fd6f1d29c7b3b5a47"
+    },
+    {
+      "path": "scripts/recall_pilot.py",
+      "sha256": "5a4f7cd48666b3d7e97ad6402ebffbf152e515e9bc66e00a07c233df99c30c0d"
+    },
+    {
+      "path": "scripts/smoke.py",
+      "sha256": "e09798509cc08bd7c981a7974085e0348f11f76e66292e9506ae198daf3f31e2"
+    },
+    {
+      "path": "scripts/summarize_results.py",
+      "sha256": "708396018783cbc973fbef2b4d1d2c9d877de6c9a9cd0239c1d64452d2e0e739"
+    },
+    {
+      "path": "scripts/train.py",
+      "sha256": "ce7476d0f2921f7c30bd9f4b97dc4623f4bc6c807fb343ee79e42e6b0f47ac9b"
+    },
+    {
+      "path": "scripts/__init__.py",
+      "sha256": "79309571c28c92c658199e4d2676344bd42f753f4e6a42a7f8f025a0a6fed4ca"
+    },
+    {
+      "path": "scripts/assets/labeler.html",
+      "sha256": "e876a9b70266b03b1607f5be221cc0862de882dfde93e4c50f8f1d1bdbce0a48"
+    },
+    {
+      "path": "scripts/preprocessing/convert_dtld.py",
+      "sha256": "c725200b63b17b06eb577e25c1b253c8eb20d050e5dec0d0601620c0a6f07e51"
+    },
+    {
+      "path": "scripts/preprocessing/dtld_parsing/calibration.py",
+      "sha256": "ab7d0563fc402d1fe11ef6173102b2c2182256265a7eb076271d83e975021f7d"
+    },
+    {
+      "path": "scripts/preprocessing/dtld_parsing/driveu_dataset.py",
+      "sha256": "4c69f643f54670e836c35208eac64bfa700378a29b895d754d41229d17997f96"
+    },
+    {
+      "path": "scripts/preprocessing/dtld_parsing/vehicle_data.py",
+      "sha256": "142e660639b1ee2019bcac04064975ba1bf5d23158af56be5f367461ed82d47c"
+    },
+    {
+      "path": "scripts/preprocessing/dtld_parsing/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "configs/backbone_vitb.yaml",
+      "sha256": "6a728693bcbcca0ed864fd4c125f50031b38fc7b0183b0c2e052176539cc4934"
+    },
+    {
+      "path": "configs/default.yaml",
+      "sha256": "ccc95a178aac75df96f33909ff3e5a9ee4b89dec2fa243fddefc1e87b35d9165"
+    },
+    {
+      "path": "configs/recall_rgb.yaml",
+      "sha256": "e907853a07ffd159065b077386ae8d10863a7f74308ce1493c454e66e8ea56b1"
+    },
+    {
+      "path": "configs/runtime.json",
+      "sha256": "3376c5829ff2497fc36a04d22bfc8b44c721c75c018997bdd64e01a1d55beb18"
+    },
+    {
+      "path": "tests/test_backbone_pilot.py",
+      "sha256": "8f3c3dbaf819bb668a4ed527bdb93383a5d8b1a1e687d94296d9c6592a297bb7"
+    },
+    {
+      "path": "tests/test_correctness.py",
+      "sha256": "2f37d08fb200c8e9f0d9e926adebf57f6e4d6e57b62bf3f85b25403085bbcb30"
+    },
+    {
+      "path": "tests/test_evaluation.py",
+      "sha256": "201efcbac14e1e3ffeb7d49d3d8cca6a3397077baf7fd7b5ec0a507e01dbe566"
+    },
+    {
+      "path": "tests/test_package.py",
+      "sha256": "794e01b5db5c398fc43ae9c16359e00e022ccb3ca87dbde7fa66c0a9a6231acb"
+    },
+    {
+      "path": "tests/test_publication.py",
+      "sha256": "271c0511a3e05ba682600c2b0989320ad3b7c813cc82cca4269416f947372ca2"
+    },
+    {
+      "path": "tests/test_recall_head.py",
+      "sha256": "eae236fea0dd8fb9fbd80c86d48c5070d945953ce0d59040c18ed26df15c9a4c"
+    },
+    {
+      "path": "tests/test_result_exports.py",
+      "sha256": "bdd14053e8a1428bd080eb821d566e2b5202d4d647465f719eeb24799a9dade9"
+    },
+    {
+      "path": "tests/test_robustness.py",
+      "sha256": "66d1647557c2a26d1a2cbe8727098ab1b3eed5e3b6669d9e0e88d84cfd78d833"
+    },
+    {
+      "path": "tests/test_supervision.py",
+      "sha256": "1b2cb6164f42d4fda762f8ba6c4cc7547ea3274e127bc231db512b2279605dde"
+    },
+    {
+      "path": "tests/test_throughput.py",
+      "sha256": "0a7af16c111d7f04065441f25a2c5d4ba7ba56bc38059ecd301ea4d4ec2e5462"
+    }
+  ]
+}

@@ -19,9 +19,11 @@ def test_historical_artifacts_match_their_preservation_hashes():
 
 
 def test_published_C_reports_are_the_original_fixed_checkpoint_measurements():
-    checkpoint = json.loads((ROOT / "metadata/checkpoints.json").read_text())["checkpoints"][0]
+    checkpoint = json.loads((ROOT / "docs/experiments/vitsplus_reference/checkpoints.json").read_text())[
+        "checkpoints"
+    ][0]
     for directory, historical in (("dtld", "DTLD"), ("atlas", "ATLAS"), ("vzc_tld", "VZC_TLD")):
-        public = ROOT / f"docs/results/{directory}/report.json"
+        public = ROOT / f"docs/experiments/vitsplus_reference/results/{directory}/report.json"
         original = ROOT / f"docs/experiments/diagnostics/{historical}/C/report.json"
         assert public.read_bytes() == original.read_bytes()
         report = json.loads(public.read_text())
@@ -29,10 +31,33 @@ def test_published_C_reports_are_the_original_fixed_checkpoint_measurements():
         assert report["checkpoint_sha256"] == checkpoint["checkpoint_sha256"]
 
 
-def test_default_is_C_with_independent_validation_selection_and_complete_source_hashes():
+def test_default_is_vitb_with_original_head_and_independent_validation_selection():
     cfg = load_config(ROOT / "configs/default.yaml")
     assert cfg["decoder"]["head"] == "v7_evidence"
     assert cfg["optim"]["early_stop_metric"] == "mAP"
     assert "selection_reference" not in cfg["optim"]
-    assert sum(p.numel() for p in EvidenceMILHead().parameters()) == 265374
+    assert cfg["backbone"]["dim"] == 768
+    assert sum(p.numel() for p in EvidenceMILHead(in_dim=1536).parameters()) == 412830
     assert source_hashes()
+
+
+def test_retained_vitb_reports_equal_original_measurements():
+    source = json.loads((ROOT / "docs/experiments/backbone_capacity/results/full_report.json").read_text())
+    meta = json.loads((ROOT / "metadata/checkpoints.json").read_text())
+    checkpoint = next(c for c in meta["checkpoints"] if c["name"] == meta["default_checkpoint"])
+    assert checkpoint["epoch"] == source["selected_epoch"] == 7
+    assert checkpoint["checkpoint_sha256"] == source["checkpoint_sha256"]
+    for dataset, folder in (("DTLD", "dtld"), ("ATLAS", "atlas"), ("VZC_TLD", "vzc_tld")):
+        public = json.loads((ROOT / f"docs/results/{folder}/report.json").read_text())
+        assert public == source["dataset_reports"][dataset]
+
+
+def test_archived_experimental_source_matches_preserved_manifest():
+    import zipfile
+
+    archive = ROOT / "docs/experiments/recall_head/source_snapshot.zip"
+    manifest = json.loads(archive.with_name("source_snapshot_manifest.json").read_text())
+    assert hashlib.sha256(archive.read_bytes()).hexdigest() == manifest["archive_sha256"]
+    with zipfile.ZipFile(archive) as saved:
+        for record in manifest["files"]:
+            assert hashlib.sha256(saved.read(record["path"])).hexdigest() == record["sha256"]

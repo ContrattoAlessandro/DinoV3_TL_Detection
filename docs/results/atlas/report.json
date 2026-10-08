@@ -1,71 +1,71 @@
 {
   "metrics": {
-    "AP_RR": 0.9288063289668523,
-    "AP_RG": 0.8475863912704789,
-    "AP_NoR": 0.8289122938193577,
-    "mAP": 0.8684350046855629,
-    "acc_bal": 0.761227536927425,
+    "AP_RR": 0.9499808924218245,
+    "AP_RG": 0.8834324445280393,
+    "AP_NoR": 0.8742176070999296,
+    "mAP": 0.9025436480165978,
+    "acc_bal": 0.829342733734031,
     "n": 528,
     "n_classes": 3,
-    "cm_RR_RR": 210,
-    "cm_RG_RG": 86,
-    "cm_NoR_NoR": 98,
+    "cm_RR_RR": 204,
+    "cm_RG_RG": 85,
+    "cm_NoR_NoR": 143,
     "temperature": 1.0,
-    "ece": 0.1502314571783547,
-    "accuracy": 0.7462121212121212,
-    "macro_F1": 0.7197126073996863,
-    "weighted_F1": 0.7450533934206927,
-    "nll": 0.7372812942700755,
-    "brier": 0.4177125694576686
+    "ece": 0.19768321126050656,
+    "accuracy": 0.8181818181818182,
+    "macro_F1": 0.8052952723808632,
+    "weighted_F1": 0.8210449921952485,
+    "nll": 0.6730843944352514,
+    "brier": 0.3748028168699546
   },
   "per_class": {
     "RR": {
-      "precision": 0.8536585365853658,
-      "recall": 0.8571428571428571,
-      "f1-score": 0.8553971486761711,
+      "precision": 0.9230769230769231,
+      "recall": 0.8326530612244898,
+      "f1-score": 0.8755364806866953,
       "support": 245.0
     },
     "RG": {
-      "precision": 0.5180722891566265,
-      "recall": 0.9052631578947369,
-      "f1-score": 0.6590038314176245,
+      "precision": 0.6589147286821705,
+      "recall": 0.8947368421052632,
+      "f1-score": 0.7589285714285714,
       "support": 95.0
     },
     "NoR": {
-      "precision": 0.8448275862068966,
-      "recall": 0.5212765957446809,
-      "f1-score": 0.6447368421052632,
+      "precision": 0.8033707865168539,
+      "recall": 0.7606382978723404,
+      "f1-score": 0.7814207650273224,
       "support": 188.0
     },
-    "accuracy": 0.7462121212121212,
+    "accuracy": 0.8181818181818182,
     "macro avg": {
-      "precision": 0.738852803982963,
-      "recall": 0.761227536927425,
-      "f1-score": 0.7197126073996863,
+      "precision": 0.7951208127586492,
+      "recall": 0.829342733734031,
+      "f1-score": 0.8052952723808632,
       "support": 528.0
     },
     "weighted avg": {
-      "precision": 0.7901340817049067,
-      "recall": 0.7462121212121212,
-      "f1-score": 0.7450533934206927,
+      "precision": 0.8329251008405699,
+      "recall": 0.8181818181818182,
+      "f1-score": 0.8210449921952485,
       "support": 528.0
     }
   },
   "confusion_matrix": [
     [
-      210,
-      20,
-      15
+      204,
+      14,
+      27
     ],
     [
-      6,
-      86,
-      3
+      2,
+      85,
+      8
     ],
     [
+      15,
       30,
-      60,
-      98
+      143
     ]
   ],
   "class_order": [
@@ -83,27 +83,30 @@
     "RG": 95,
     "NoR": 188
   },
-  "accuracy": 0.7462121212121212,
-  "excluded": {},
+  "accuracy": 0.8181818181818182,
+  "excluded": {
+    "unlabeled": 0,
+    "uncertain": 0
+  },
   "per_camera": {
     "front_medium": {
-      "AP_RR": 0.9463661932131935,
-      "AP_RG": 0.8583169070888201,
-      "AP_NoR": 0.8448230749026915,
-      "mAP": 0.8831687250682351,
-      "acc_bal": 0.7675701178456844,
+      "AP_RR": 0.9641807037387293,
+      "AP_RG": 0.8939928034908421,
+      "AP_NoR": 0.8946517627863617,
+      "mAP": 0.9176084233386445,
+      "acc_bal": 0.8456584920148913,
       "n": 393,
       "n_classes": 3,
-      "cm_RR_RR": 158,
-      "cm_RG_RG": 64,
-      "cm_NoR_NoR": 72,
+      "cm_RR_RR": 156,
+      "cm_RG_RG": 61,
+      "cm_NoR_NoR": 113,
       "temperature": 1.0,
-      "ece": 0.16175343393855,
-      "accuracy": 0.7480916030534351,
-      "macro_F1": 0.7197687818296717,
-      "weighted_F1": 0.746777482944957,
-      "nll": 0.7257440307980061,
-      "brier": 0.4109737583033023,
+      "ece": 0.21238222871943047,
+      "accuracy": 0.8396946564885496,
+      "macro_F1": 0.8245246337710043,
+      "weighted_F1": 0.8427489395357017,
+      "nll": 0.638581933380563,
+      "brier": 0.35355716625445976,
       "class_counts": {
         "RR": 182,
         "RG": 69,
@@ -111,23 +114,23 @@
       }
     },
     "front_tele": {
-      "AP_RR": 0.8743318312239087,
-      "AP_RG": 0.8880378136125264,
-      "AP_NoR": 0.7952287519180435,
-      "mAP": 0.8525327989181596,
-      "acc_bal": 0.7278752436647173,
+      "AP_RR": 0.8659383497232378,
+      "AP_RG": 0.8969859057154139,
+      "AP_NoR": 0.7591112140957947,
+      "mAP": 0.8406784898448155,
+      "acc_bal": 0.7382066276803118,
       "n": 86,
       "n_classes": 3,
-      "cm_RR_RR": 34,
-      "cm_RG_RG": 16,
-      "cm_NoR_NoR": 12,
+      "cm_RR_RR": 28,
+      "cm_RG_RG": 17,
+      "cm_NoR_NoR": 16,
       "temperature": 1.0,
-      "ece": 0.15557343348260078,
-      "accuracy": 0.7209302325581395,
-      "macro_F1": 0.6907854714617999,
-      "weighted_F1": 0.7017838195458688,
-      "nll": 0.7575187419835022,
-      "brier": 0.41899675150850413,
+      "ece": 0.2297967523503497,
+      "accuracy": 0.7093023255813954,
+      "macro_F1": 0.7037572689746603,
+      "weighted_F1": 0.7037516633067695,
+      "nll": 0.8054369287448013,
+      "brier": 0.45115258223930427,
       "class_counts": {
         "RR": 38,
         "RG": 18,
@@ -135,23 +138,23 @@
       }
     },
     "front_wide": {
-      "AP_RR": 0.9233658676056179,
-      "AP_RG": 0.6649621212121213,
-      "AP_NoR": 0.8916619767079326,
-      "mAP": 0.8266633218418905,
-      "acc_bal": 0.7816666666666666,
+      "AP_RR": 0.9450227743271222,
+      "AP_RG": 0.750297619047619,
+      "AP_NoR": 0.8890955398767899,
+      "mAP": 0.8614719777505103,
+      "acc_bal": 0.85,
       "n": 49,
       "n_classes": 3,
-      "cm_RR_RR": 18,
-      "cm_RG_RG": 6,
+      "cm_RR_RR": 20,
+      "cm_RG_RG": 7,
       "cm_NoR_NoR": 14,
       "temperature": 1.0,
-      "ece": 0.254491360483792,
-      "accuracy": 0.7755102040816326,
-      "macro_F1": 0.7472370766488413,
-      "weighted_F1": 0.7843064498526685,
-      "nll": 0.794296070620454,
-      "brier": 0.46950671491265056,
+      "ece": 0.2831768230588992,
+      "accuracy": 0.8367346938775511,
+      "macro_F1": 0.8164201353055841,
+      "weighted_F1": 0.8427230541339342,
+      "nll": 0.7175160116571114,
+      "brier": 0.4111999774847592,
       "class_counts": {
         "RR": 25,
         "RG": 8,
@@ -164,29 +167,10 @@
     "Do not train/tune on this set and call it unseen-data evaluation.",
     "DTLD calibration is not guaranteed to transfer to OOD images."
   ],
-  "checkpoint_sha256": "7be4e19ae4ac03a1422983a15aa561f4d2f91a324be8e0e055dad56536c985da",
-  "epoch": 5,
-  "weights": "EMA",
-  "temperature": 1.0,
-  "checkpoint_selection": "highest fold-0 validation mAP; diagnostic checkpoint, failed eligibility",
-  "predictions_sha256": "bf2b4a31d2c97e08c3508f074100b58d8df1d95ca961a58ec81a23b21340da1e",
-  "verification": {
-    "first_batch_images": 4,
-    "members": [
-      {
-        "member": 0,
-        "max_abs_logit_difference": 0.0
-      },
-      {
-        "member": 1,
-        "max_abs_logit_difference": 0.0
-      },
-      {
-        "member": 2,
-        "max_abs_logit_difference": 0.0
-      }
-    ],
-    "elapsed_seconds": 18.46899999998277
-  },
-  "completed_at": "2026-10-07T06:53:44.223035+00:00"
+  "labels_file": "C:\\Users\\alexa\\Desktop\\traffic-light-detection\\metadata\\atlas_labels.json",
+  "source": [
+    "C:\\Users\\alexa\\Desktop\\traffic-light-detection\\runs\\backbone_vitb_fold0\\training\\fold0\\best.pt"
+  ],
+  "crop_sides": 0,
+  "metric_input": "raw logits T=1"
 }

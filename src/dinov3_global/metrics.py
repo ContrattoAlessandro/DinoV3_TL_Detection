@@ -78,6 +78,10 @@ def global_metrics(y_true: np.ndarray, logits: np.ndarray) -> Dict[str, float]:
     out["cm_RR_RR"] = int(cm[0, 0])
     out["cm_RG_RG"] = int(cm[1, 1])
     out["cm_NoR_NoR"] = int(cm[2, 2])
+    for i, name in enumerate(("RR", "RG", "NoR")):
+        out["recall_" + name] = float(cm[i, i] / cm[i].sum()) if cm[i].sum() else float("nan")
+        out["precision_" + name] = float(cm[i, i] / cm[:, i].sum()) if cm[:, i].sum() else 0.0
+    out["mean_signal_recall"] = float((out["recall_RR"] + out["recall_RG"]) / 2)
     return out
 
 
@@ -157,6 +161,7 @@ def report(
     T: float = 1.0,
     cities: Optional[List[str]] = None,
     max_lamp_h: Optional[np.ndarray] = None,
+    target_lamp_h: Optional[np.ndarray] = None,
 ) -> Dict:
     """AP, argmax decisions, probability quality, class metrics, and slices."""
     if not np.isfinite(T) or T <= 0:
@@ -183,6 +188,10 @@ def report(
         "class_order": ["RR", "RG", "NoR"],
     }
     sl = sliced_metrics(y, logits, cities, max_lamp_h)
+    if target_lamp_h is not None:
+        target_sizes = np.asarray(target_lamp_h, dtype=float).copy()
+        target_sizes[target_sizes <= 0] = np.nan
+        sl["target_lamp_size"] = sliced_metrics(y, logits, max_lamp_h=target_sizes).get("size", {})
     if sl:
         rep["slices"] = sl
     return rep

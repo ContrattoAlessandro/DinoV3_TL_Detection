@@ -11,8 +11,48 @@ import torch
 from torch import nn
 
 from dinov3_global.data import DTLDGlobalDataset
-from dinov3_global.evaluation import audit_test_split, predict_heads
+from dinov3_global.evaluation import audit_test_split, predict_heads, write_json
 from dinov3_global.model import DinoGlobal
+
+
+def test_atomic_json_retries_a_transient_windows_reader_lock(monkeypatch, tmp_path):
+    from pathlib import Path
+
+    path = tmp_path / "status.json"
+    path.write_text('{"stage": "old"}')
+    replace, calls = Path.replace, []
+
+    def locked_once(temporary, target):
+        calls.append(1)
+        if len(calls) == 1:
+            assert json.loads(path.read_text()) == {"stage": "old"}
+            raise PermissionError("Transient reader lock")
+        return replace(temporary, target)
+
+    monkeypatch.setattr(Path, "replace", locked_once)
+    monkeypatch.setattr("dinov3_global.evaluation.time.sleep", lambda delay: None)
+    write_json(path, {"stage": "new"})
+    assert len(calls) == 2
+    assert json.loads(path.read_text()) == {"stage": "new"}
+
+
+def test_atomic_json_preserves_old_status_when_lock_is_persistent(monkeypatch, tmp_path):
+    from pathlib import Path
+
+    path = tmp_path / "status.json"
+    path.write_text('{"stage": "old"}')
+    calls = []
+
+    def locked(temporary, target):
+        calls.append(1)
+        raise PermissionError("Persistent reader lock")
+
+    monkeypatch.setattr(Path, "replace", locked)
+    monkeypatch.setattr("dinov3_global.evaluation.time.sleep", lambda delay: None)
+    with pytest.raises(PermissionError):
+        write_json(path, {"stage": "new"})
+    assert len(calls) == 8
+    assert json.loads(path.read_text()) == {"stage": "old"}
 
 
 def make_dataset(root):
@@ -96,7 +136,13 @@ def test_shared_encoder_is_bitwise_equal_to_complete_forwards_and_preserves_orde
 
     encoder = TinyEncoder()
     monkeypatch.setattr(AutoModel, "from_pretrained", lambda *args, **kwargs: encoder)
-    model = DinoGlobal(dtype="float32", grid_hw=(2, 3), proj_dim=8, dropout=0).eval()
+    model = DinoGlobal(
+        hf_id="facebook/dinov3-vits16plus-pretrain-lvd1689m",
+        dtype="float32",
+        grid_hw=(2, 3),
+        proj_dim=8,
+        dropout=0,
+    ).eval()
     heads = [model.head, deepcopy(model.head).eval()]
     with torch.no_grad():
         heads[1].bias.add_(0.5)

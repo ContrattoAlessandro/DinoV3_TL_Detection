@@ -1,7 +1,9 @@
 # Contributing
 
 The supported architecture is the shared evidence MIL head in
-`src/dinov3_global/head.py`, with `configs/default.yaml` as the canonical protocol.
+`src/dinov3_global/head.py`, with frozen ViT-B/16 and `configs/default.yaml`
+as the canonical protocol. `configs/vitsplus.yaml` retains the supported ViT-S+
+reference; both configurations share the same head, losses and preprocessing.
 Keep changes to image transforms consistent across training, inference, and
 attribute target generation. Changing class/state/attribute order is a checkpoint
 format change and must be documented.

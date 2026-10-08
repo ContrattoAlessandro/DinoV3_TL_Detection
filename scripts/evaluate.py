@@ -1,4 +1,4 @@
-"""Evaluate fixed Experiment C checkpoints on the official DTLD test split.
+"""Evaluate fixed DinoGlobal-MIL checkpoints on the official DTLD test split.
 
 Raw T=1 metrics are primary. A single checkpoint can additionally use its saved
 DTLD-validation temperature. No calibration is fitted on test data.
@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 from torch.utils.data import DataLoader
 
-from dinov3_global.backbone import BACKBONE_ID, BACKBONE_REVISION
+from dinov3_global.backbone import backbone_spec
 from dinov3_global.config import validate_config, architecture_name
 from dinov3_global.data import collate_global
 from dinov3_global.engine import build_test_loader, load_model
@@ -38,12 +38,20 @@ def save_predictions(directory, labels, logits, meta, pseudo_nor):
         paths=np.asarray(meta["paths"]),
         cities=np.asarray(meta["cities"]),
         max_lamp_h=meta["max_lamp_h"],
+        target_lamp_h=meta.get("target_lamp_h", np.full(len(labels), np.nan)),
         pseudo_nor=pseudo_nor,
     )
 
 
 def test_report(labels, logits, meta, pseudo_nor):
-    result = report(labels, logits, T=1.0, cities=meta["cities"], max_lamp_h=meta["max_lamp_h"])
+    result = report(
+        labels,
+        logits,
+        T=1.0,
+        cities=meta["cities"],
+        max_lamp_h=meta["max_lamp_h"],
+        target_lamp_h=meta.get("target_lamp_h"),
+    )
     # Preserve the full official membership; this fixed diagnostic only
     # measures sensitivity to relevant-off/unknown-only frames mapped to NoR.
     clean = ~pseudo_nor
@@ -128,7 +136,7 @@ def main():
         checkpoint_selection=f"City-validation EMA {states[0].get('selection_metric', 'mAP')} at T=1; fixed before test inference",
         test_fitting=False,
         calibration="None for primary metrics; no test-fitted temperature or thresholds",
-        backbone=dict(hf_id=BACKBONE_ID, revision=BACKBONE_REVISION),
+        backbone=backbone_spec(cfg["backbone"]["hf_id"]),
         data=cfg["data"],
         runtime_loader=runtime or cfg.get("loader", {}),
         batch_size=tel.batch_size,

@@ -1,4 +1,4 @@
-# Experiment C: canonical architecture and training settings.
+# DinoGlobal-MIL with frozen ViT-B/16: canonical architecture and training settings.
 # Fresh runs select EMA checkpoints by validation mAP; historical selection is archived.
 data:
   label_dir: datasets/DTLD/v2.0
@@ -19,9 +19,9 @@ data:
   sampler: none
   preprocessing: letterbox
 backbone:
-  hf_id: facebook/dinov3-vits16plus-pretrain-lvd1689m
+  hf_id: facebook/dinov3-vitb16-pretrain-lvd1689m
   local_ckpt: null
-  dim: 384
+  dim: 768
   patch: 16
   frozen: true
   use_cls: true

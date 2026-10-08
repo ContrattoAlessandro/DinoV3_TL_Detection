@@ -18,7 +18,7 @@
 </defs>
 <rect width="1240" height="900" fill="white"/>
 <text x="40" y="44" class="title">DinoGlobal-MIL · Shared attribute evidence architecture</text>
-<text x="40" y="73" class="subtitle">Experiment C | Frozen DINOv3 encoder + 265,374 trainable head parameters | RGB-only inference</text>
+<text x="40" y="73" class="subtitle">ViT-B/16 | Frozen DINOv3 encoder + 412,830 trainable head parameters | RGB-only inference</text>
 
 <rect x="40" y="115" width="220" height="140" class="box data"/>
 <text x="60" y="146" class="heading">Full-frame RGB</text>
@@ -27,15 +27,15 @@
 <text x="60" y="233" class="small">ImageNet normalization</text>
 
 <rect x="315" y="115" width="300" height="140" class="box frozen"/>
-<text x="335" y="146" class="heading">Frozen DINOv3 ViT-S+/16</text>
-<text x="335" y="178" class="body">Layer 6 + final: 384 + 384</text>
+<text x="335" y="146" class="heading">Frozen DINOv3 ViT-B/16</text>
+<text x="335" y="178" class="body">Layer 6 + final: 768 + 768</text>
 <text x="335" y="204" class="body">45 × 80 patches + CLS</text>
 <text x="335" y="233" class="small">Discard 4 register tokens</text>
 
 <rect x="670" y="115" width="215" height="140" class="box"/>
 <text x="690" y="146" class="heading">Shared fusion</text>
 <text x="690" y="178" class="body">[final ; layer 6]</text>
-<text x="690" y="204" class="body">Linear 768 → 192</text>
+<text x="690" y="204" class="body">Linear 1536 → 192</text>
 <text x="690" y="233" class="small">LayerNorm → h, g</text>
 
 <rect x="945" y="115" width="255" height="140" class="box"/>

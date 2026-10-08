@@ -1,0 +1,214 @@
+{
+  "schema_version": 1,
+  "frozen_at": "2026-10-07T09:37:09.921103+00:00",
+  "config": {
+    "data": {
+      "label_dir": "datasets/DTLD/v2.0",
+      "img_root": "datasets/DTLD_jpg",
+      "crop_sides": 0,
+      "label_crop_sides": 0,
+      "target_hw": [
+        720,
+        1280
+      ],
+      "global_classes": [
+        "RR",
+        "RG",
+        "NoR"
+      ],
+      "val_frac": 0.15,
+      "val_seed": 0,
+      "label_policy": "map_to_nor",
+      "policy_weight": 1.0,
+      "sampler": "none",
+      "preprocessing": "letterbox"
+    },
+    "backbone": {
+      "hf_id": "facebook/dinov3-vitb16-pretrain-lvd1689m",
+      "local_ckpt": "runs/backbones/dinov3_vitb16",
+      "dim": 768,
+      "patch": 16,
+      "frozen": true,
+      "use_cls": true,
+      "attn_implementation": "sdpa",
+      "dtype": "float16",
+      "mid_layer": 6
+    },
+    "decoder": {
+      "head": "v7_evidence",
+      "proj_dim": 192,
+      "dropout": 0.2,
+      "pool": "local",
+      "topk": [
+        1,
+        2,
+        4
+      ],
+      "logit_scale": 2.5,
+      "relevance_context": true,
+      "context_dropout": 0.5,
+      "context_bound": 1.0
+    },
+    "optim": {
+      "seed": 0,
+      "lr": 6e-05,
+      "weight_decay": 0.05,
+      "epochs": 12,
+      "batch": 4,
+      "accum": 4,
+      "warmup_epochs": 3,
+      "amp": true,
+      "grad_clip": 1.0,
+      "ema_decay": 0.999,
+      "early_stop_metric": "mAP",
+      "early_stop_patience": 0,
+      "clean_probe_size": 1024
+    },
+    "loss": {
+      "label_smoothing": 0.05,
+      "tau_la": 0.0,
+      "token_lamp": 0.3,
+      "token_state": 0.2,
+      "token_rel": 0.5,
+      "token_dir": 0.2,
+      "lamp_pos_weight": 10.0,
+      "rel_pos_weight": 2.0,
+      "rel_lamp_weight": 0.75,
+      "rel_focal_gamma": 2.0,
+      "state_balance": "sqrt",
+      "state_rel_boost": 2.0,
+      "consist": 0.1,
+      "consist_warmup_epochs": 3,
+      "supervise_view2": true,
+      "class_balance": "sqrt",
+      "attribute_reduction": "instance",
+      "token_pictogram": 0.1
+    },
+    "augment": {
+      "photometric": true,
+      "blur": true,
+      "strength": 0.8,
+      "per_image": true,
+      "clean_prob": 0.2,
+      "blend_min": 0.35,
+      "p_erase": 0.02,
+      "zoom_out_prob": 0.5,
+      "zoom_out_min": 0.9
+    },
+    "loader": {
+      "num_workers": 0,
+      "pin_memory": false
+    },
+    "eval": {
+      "split": "test"
+    }
+  },
+  "backbone": {
+    "hf_id": "facebook/dinov3-vitb16-pretrain-lvd1689m",
+    "revision": "5931719e67bbdb9737e363e781fb0c67687896bc",
+    "dim": 768,
+    "patch": 16
+  },
+  "fold_indices": [
+    0
+  ],
+  "epochs": 12,
+  "selection": "highest city-validation EMA mAP at T=1; earliest tie",
+  "baseline_checkpoint": {
+    "name": "experiment_c_fold0",
+    "checkpoint": "runs/pretrained/experiment_c_fold0.pt",
+    "checkpoint_sha256": "7be4e19ae4ac03a1422983a15aa561f4d2f91a324be8e0e055dad56536c985da",
+    "epoch": 5,
+    "seed": 0,
+    "train_images": 21493,
+    "validation_images": 7032,
+    "validation_cities": [
+      "Dortmund",
+      "Kassel",
+      "Fulda"
+    ],
+    "validation_mAP": 0.6937446754351165
+  },
+  "baseline_validation_mAP": 0.6937446754351165,
+  "evaluation": {
+    "DTLD": "all 12453 official test images",
+    "ATLAS": "all 528 fixed manual labels, including uncertain",
+    "VZC_TLD": "598 published test images; train/all reported separately"
+  },
+  "decision_rule": "Recommend further folds only if validation mAP improves and no dataset's test mAP decreases, with at least one test mAP increase. Report all operating metrics regardless. Never launch additional folds automatically.",
+  "input_sha256": {
+    "configs/backbone_vitb.yaml": "6a728693bcbcca0ed864fd4c125f50031b38fc7b0183b0c2e052176539cc4934",
+    "configs/default.yaml": "ccc95a178aac75df96f33909ff3e5a9ee4b89dec2fa243fddefc1e87b35d9165",
+    "configs/runtime.json": "3376c5829ff2497fc36a04d22bfc8b44c721c75c018997bdd64e01a1d55beb18",
+    "metadata/dtld_city_folds.json": "c4f4fd9b3cfe41dbeee4ce9640d97d145a0cf057d1d6c7e33f0290fbd8670478",
+    "metadata/atlas_labels.json": "5a158cccc53438c4c0cb5a937a2673e2d7a8cec3ae2ddb16439499a47eaa9944",
+    "datasets/VZC_TLD/download_manifest.json": "34ba3608a4f63263c979cd92cc44290f6eb6a7a82d3be5b61715ccd6f32d5952",
+    "datasets/DTLD/v2.0/DTLD_train.json": "959a67ec0d843886d286cd4c7e8513dc8435357d60726231d52c1ba9c873d9b5",
+    "datasets/DTLD/v2.0/DTLD_test.json": "178d6719df8f665cf97f1522dd506aac1f33e1b26212c0910bee722582bc25a4",
+    "runs/pretrained/experiment_c_fold0.pt": "7be4e19ae4ac03a1422983a15aa561f4d2f91a324be8e0e055dad56536c985da",
+    "docs/results/provenance.json": "2ffd47f783f3a12efe18949eab5e71c7902eb5d8cfe602b73ac57e06dd60ab52",
+    "docs/experiments/generalization/C/fold0/fold_report.json": "f3176b8f82e6cd4f19d0db1b63eb8a5ce8ffa8c13019cf25ecbc8ba050ef7a1e",
+    "runs/backbone_vitb_fold0/smoke/report.json": "63f12dd2c8864c7e9717cac17b4fff433b8ca6dfcebf521a220a182838fddc55",
+    "runs/backbones/dinov3_vitb16/config.json": "3c9cc418f4622fd6d5587fd142b6f3cba0ba6a69f67ced907d8b7f26118451ec",
+    "runs/backbones/dinov3_vitb16/model.safetensors": "9a21ac3df0c63839d62612dda6f454d816c25611cc7a52966ed5a5a94921dc8b",
+    "src/dinov3_global/__init__.py": "ab8ffd253b648b59ba695f9ef32ca7ef5e6ce53629bce9156e4efc8b26535972",
+    "src/dinov3_global/augment.py": "72aa2d8a7e8f32fced3b96f9a5c4d0651974895425f131bbe40a963f0f3cd2d3",
+    "src/dinov3_global/backbone.py": "fcd3ef786bf605e67659fad158a4382fea74fee4cfa8e8ea9e7739e081ccca17",
+    "src/dinov3_global/config.py": "ae23305f4b46182f769e0a6e2b968ea08a2f7dc1a1770ff8943245964da2f4cb",
+    "src/dinov3_global/data.py": "1f4de6b12123ecd3d38182d1bccfa31ea23192b16b29b092ddf312b2d3b6633f",
+    "src/dinov3_global/dtld.py": "5ca0972c3f20a81c5baf5535fdd0d9d3cf470bf159e790434c9f708ff158a098",
+    "src/dinov3_global/engine.py": "ded483fbf3be551efd6e2cdfabb47862865794fb2434815ec93f9404c4b7d7bd",
+    "src/dinov3_global/evaluation.py": "e3af891e67544c07e682c5e6e1b7df3eb3733f0e41a34296ef70a917eab7a887",
+    "src/dinov3_global/head.py": "8873467b5e5be80f91b8abdfd0897e06eb47bd1a8e24db501629adf96aee2f49",
+    "src/dinov3_global/inference.py": "c9370c0dd75e2981e7cc60fb3db402dbd6c2fe48c20ecc60479b515ebabc2b3a",
+    "src/dinov3_global/losses.py": "0b441a238372192603611de544dbd74f80a0256715c61cfd692b46e6096e5cb7",
+    "src/dinov3_global/metrics.py": "52ed596054bcd339b248eba7243ea7c793fd1129ae20327b09ce6c6c2183d1ec",
+    "src/dinov3_global/model.py": "bf692b0030ab8fe7ab807359bd2c5d19bcd3e0e931d1e7959b7eeac2256e6ef7",
+    "src/dinov3_global/pooling.py": "e7812a5c062fdf409c38cfec23159fdc2e28b13e3e578934d88ba35e74c9cd7d",
+    "src/dinov3_global/preprocessing.py": "a66c399d49c1a5fd7845cfac324b0788ca8cd63d45eeb00ba0ccf3233bd697b0",
+    "src/dinov3_global/runtime.py": "71e5bcfb6f17b889a424be75c44a3380b8c950497e77972295870669c404c250",
+    "src/dinov3_global/validation.py": "14af671a743415048163ca8fa85ca1c2dd7ad0fe9b1405d8a88a3047888f815b",
+    "scripts/__init__.py": "79309571c28c92c658199e4d2676344bd42f753f4e6a42a7f8f025a0a6fed4ca",
+    "scripts/annotate_ood.py": "e323e3d868097095eb09029f273d305e0b16bdda4e21f641c0c85da485418521",
+    "scripts/backbone_pilot.py": "a8f87564db6e6137eca0aa11f8728bcc6a7c065938dabb6c92b3f0471b8779a5",
+    "scripts/cross_validate.py": "5d361e837506bea643bf51e007d2a7730498584032456a8cbf0e18480aaa2310",
+    "scripts/download_vzc.py": "52691541c403343074637ea7b22c417ad76a919e26982643daa986da795b56d9",
+    "scripts/evaluate.py": "df297a55aaf0c269bac0b50c96938afce2c21f886f485a1ebf50a7cfff225377",
+    "scripts/evaluate_ood.py": "3295a9ae6e9083863a1427601bd00efb95f4f1d3e31e1eea3ce8bd51513ddeda",
+    "scripts/evaluate_vzc.py": "8c22662b595f53cb988769cc0efebaba784f631a47a3065444368c74125a6745",
+    "scripts/infer.py": "3867de3b70d5a56fe04ae9f592a8aff43fe67f0d103f118fd6f1d29c7b3b5a47",
+    "scripts/smoke.py": "9b32d8dec17c9d67afdd1e7d9d3d4b2903711350e9e6a52f1966a30049e0a6d1",
+    "scripts/summarize_results.py": "708396018783cbc973fbef2b4d1d2c9d877de6c9a9cd0239c1d64452d2e0e739",
+    "scripts/train.py": "ce7476d0f2921f7c30bd9f4b97dc4623f4bc6c807fb343ee79e42e6b0f47ac9b",
+    "runs/archive/generalization_study/diagnostic_tests/DTLD/C/predictions.npz": "0a33648b1933eb51ceed5e465beabcd61167e715a62dc58df57239a3ea7f6a41",
+    "docs/results/dtld/report.json": "f394531b9b2bcf18cf609f15cf1779ffe6bed545f96e9e99ca6eb598d9f8b6d1",
+    "runs/archive/generalization_study/diagnostic_tests/ATLAS/C/predictions.npz": "bf2b4a31d2c97e08c3508f074100b58d8df1d95ca961a58ec81a23b21340da1e",
+    "docs/results/atlas/report.json": "9685599526a3e4995740e94e5d44bab03545549dad40fe1037bc476ebac0a9db",
+    "runs/archive/generalization_study/diagnostic_tests/VZC_TLD/C/predictions.npz": "41b7cfc326643abc1370f9cc5630c992317a8d00676a270247566531edb7f05b",
+    "docs/results/vzc_tld/report.json": "d0c79ceeb9c7fd17542364d5c90875e0023a753ad803c1833adfaaaae8f0c4c5"
+  },
+  "recovery": {
+    "recovered_at_utc": "2026-10-07T16:24:21.894528+00:00",
+    "original_plan_sha256": "bec0649dde7b09a309acea40ca6b3cfac7bea8d4adbc69942520f8bdb1dc6c4b",
+    "reason": "Controller stopped on transient Windows status-file replacement lock; training child completed all 12 epochs. Retry progress writes and recover evaluation without retraining.",
+    "source_amendments": [
+      {
+        "file": "src/dinov3_global/evaluation.py",
+        "before_sha256": "4d89ee1b8f45fe5900043f7b78e7852c7f5e8847055c5e3d4b33c7186236c4e3",
+        "after_sha256": "e3af891e67544c07e682c5e6e1b7df3eb3733f0e41a34296ef70a917eab7a887"
+      },
+      {
+        "file": "scripts/backbone_pilot.py",
+        "before_sha256": "8a531be3999cb825a656d1ee267893758475dea9ee16f58cf8708f2aafff61ba",
+        "after_sha256": "a8f87564db6e6137eca0aa11f8728bcc6a7c065938dabb6c92b3f0471b8779a5"
+      }
+    ],
+    "completed_training_sha256": {
+      "training/fold0/best.pt": "edb2bb7bfd4a40cf470cd62f1dbd14e25b14d9c8feb107207be03922c528042e",
+      "training/fold0/last.pt": "e79822a51c59f47234423133eb849b9fdb114ac2066c119ee39aa19f31ad64e9",
+      "training/fold0/history.jsonl": "3d3208d77fbc5b9eb2b45e205770519db88428dc0747c582cae8b186bbeb538a",
+      "training/fold0/fold_report.json": "28d042dc8641119d304e66f851be4a7f79afad6956781d5b3b0fc88b912831b3",
+      "training/source_manifest.json": "8d80046b7d8389fbadc3fd61bf06a1b43eef65aa06327c440c0dfdd40c230c81"
+    }
+  }
+}

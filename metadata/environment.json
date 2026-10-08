@@ -16,7 +16,8 @@
   "cuda_runtime": "13.0",
   "gpu": "NVIDIA GeForce RTX 5070",
   "backbone": {
-    "hf_id": "facebook/dinov3-vits16plus-pretrain-lvd1689m",
-    "revision": "c93d816fc9e567563bc068f01475bec89cc634a6"
-  }
+    "hf_id": "facebook/dinov3-vitb16-pretrain-lvd1689m",
+    "revision": "5931719e67bbdb9737e363e781fb0c67687896bc"
+  },
+  "scope": "Recorded local environment for the frozen ViT-B capacity run and cleanup verification; see source plans for per-run settings."
 }

@@ -253,7 +253,9 @@ def main():
         sd = torch.load(chosen_path, map_location="cpu", weights_only=True)
         model.head.load_state_dict(sd["ema"])
         ys, lgs, meta = predict_split(model, vl, dev)
-        rep = report(ys, lgs, cities=meta["cities"], max_lamp_h=meta["max_lamp_h"])
+        rep = report(
+            ys, lgs, cities=meta["cities"], max_lamp_h=meta["max_lamp_h"], target_lamp_h=meta["target_lamp_h"]
+        )
         results[f"fold{fi}"] = {
             "architecture": architecture_name(fold_cfg),
             "val_cities": cities,
@@ -270,6 +272,8 @@ def main():
             logits=lgs,
             paths=np.asarray(meta["paths"]),
             cities=np.asarray(meta["cities"]),
+            max_lamp_h=meta["max_lamp_h"],
+            target_lamp_h=meta["target_lamp_h"],
         )
         atomic_json(Path(fold_dir, "fold_report.json"), results[f"fold{fi}"])
         write_summary()

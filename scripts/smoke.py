@@ -39,13 +39,14 @@ class OneEpoch:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", type=Path, default=REPO / "configs/default.yaml")
     parser.add_argument("--out", type=Path, default=REPO / "runs/smoke")
     args = parser.parse_args()
     if args.out.exists() and any(args.out.iterdir()):
         raise ValueError("Smoke output directory must be empty")
     args.out.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
-    cfg = copy.deepcopy(load_config(REPO / "configs/default.yaml"))
+    cfg = copy.deepcopy(load_config(args.config))
     cfg["optim"]["epochs"] = 2
     cfg["optim"]["clean_probe_size"] = 4
     d = cfg["data"]
@@ -155,6 +156,7 @@ def main():
         dict(
             status="complete",
             real_frozen_backbone=True,
+            backbone=cfg["backbone"],
             target_hw=[720, 1280],
             batch=4,
             training_images=4,

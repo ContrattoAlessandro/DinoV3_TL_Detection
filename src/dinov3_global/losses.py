@@ -1,6 +1,6 @@
 """Global classification, attribute supervision, and two-view consistency.
 
-Global CE supports label smoothing and optional logit adjustment. Experiment C
+Global CE supports label smoothing and optional logit adjustment. DinoGlobal-MIL
 uses inverse-square-root class weights without logit adjustment. Lamp detection
 covers valid tokens; state, direction, and pictogram CE cover annotated lamps.
 Relevance focal loss balances lamp instances against background separately.

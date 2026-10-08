@@ -7,11 +7,16 @@ image. Its compact head estimates lamp presence, state, housing direction,
 pictogram, and relevance, then aggregates local evidence into an image-level
 decision. Training uses lamp annotations; inference requires only an RGB image.
 
-**Experiment C is the default and sole supported architecture.** Its shared
-evidence head replaces the previous independent-branch architecture. The
-canonical configuration is [configs/default.yaml](configs/default.yaml).
-[Experiment history](docs/experiments/README.md) preserves previous architectures,
-exact settings, training histories, results, and the original study decisions.
+The supported method uses the original shared evidence head and supervision with a
+**frozen DINOv3 ViT-B/16 encoder**. [configs/default.yaml](configs/default.yaml)
+defines the canonical training protocol; [configs/vitsplus.yaml](configs/vitsplus.yaml)
+retains the ViT-S+/16 reference. Both use the same head, losses, augmentation,
+preprocessing, and RGB-image-to-three-logits interface.
+
+The retained predictor is one fold-0, epoch-7 **EMA** head. Failed experimental
+heads and pilot controllers are excluded from the active package. Their source,
+measurements, and selection decisions remain in the
+[research archive](docs/experiments/README.md).
 
 ## Task and label policy
 
@@ -39,15 +44,15 @@ Padding uses RGB (124, 116, 104); a content mask excludes patches entirely withi
 padding from supervision and evidence pooling. Patch geometry is expressed in
 the resized content coordinates, so letterbox margins do not shift its meaning.
 
-The encoder is **DINOv3 ViT-S+/16**, loaded from
-[facebook/dinov3-vits16plus-pretrain-lvd1689m](https://huggingface.co/facebook/dinov3-vits16plus-pretrain-lvd1689m)
+The default encoder is **DINOv3 ViT-B/16**, loaded from
+[facebook/dinov3-vitb16-pretrain-lvd1689m](https://huggingface.co/facebook/dinov3-vitb16-pretrain-lvd1689m)
 at the revision pinned in [backbone.py](src/dinov3_global/backbone.py).
 All encoder parameters are frozen and the encoder remains in evaluation mode.
 Pixels are normalized with ImageNet mean and standard deviation.
 
 The patch grid has **45 × 80 = 3,600 tokens**. The encoder additionally returns
 one CLS token and four register tokens; the registers are discarded. Final-layer
-and layer-6 features, each 384-dimensional, are concatenated in that order.
+and layer-6 features, each 768-dimensional, are concatenated in that order.
 A shared projection and LayerNorm map both patch and CLS features to width 192:
 
 $$
@@ -141,25 +146,26 @@ This constraint does not guarantee calibrated probabilities or high NoR recall.
 
 | Component | Parameters | Optimization |
 |:--|--:|:--|
-| DINOv3 ViT-S+/16 | 28,692,864 | Frozen |
-| Shared fusion projection and normalization | 148,032 | Trainable |
+| DINOv3 ViT-B/16 | 85,660,416 | Frozen |
+| Shared fusion projection and normalization | 295,488 | Trainable |
 | Appearance trunk | 74,112 | Trainable |
 | Lamp/state/direction/pictogram heads | 4,053 | Trainable |
 | Base relevance / context correction | 13,313 / 25,857 | Trainable |
 | Image-level readout | 7 | Trainable |
-| **Complete head** | **265,374** | **Head only** |
-| **Total model** | **28,958,238** | |
+| **Complete head** | **412,830** | **Head only** |
+| **Total model** | **86,073,246** | |
 
-The head has 45.8% fewer parameters than the archived v5 head. The recorded C
-predictor is one fold-0 EMA head, rather than a four-fold ensemble.
+ViT-S+/16 has 384-dimensional features and a 265,374-parameter head. Switching
+the encoder changes only the input projection width; the method and training
+objective remain identical. The recorded results use a single EMA head.
 Implementation: [model.py](src/dinov3_global/model.py),
 [head.py](src/dinov3_global/head.py), and [pooling.py](src/dinov3_global/pooling.py).
 
 ## Training objective and optimization
 
 Two independently augmented views retain the complete scene. Image-level
-cross-entropy is averaged across the views; attribute supervision uses the
-first view. A symmetric KL term encourages prediction consistency:
+cross-entropy and attribute supervision are averaged across both views.
+A symmetric KL term encourages prediction consistency:
 
 $$
 \mathcal{L}=\tfrac12(\mathcal{L}_{\mathrm{CE}}^{(1)}+\mathcal{L}_{\mathrm{CE}}^{(2)})
@@ -201,57 +207,55 @@ and minimum clean-image blend 0.35. All-lamp erasure occurs with probability
 | New-run selection | Highest validation EMA mAP at T=1; earlier epoch wins ties |
 | Clean training probe | 1,024 fixed images; diagnostic only |
 
-The original C pilot used an additional v5-relative eligibility rule and failed
-it. Its epoch-5 diagnostic checkpoint was selected by validation mAP. New runs
-use the same C model and loss settings with independent validation-mAP selection;
-their protocol is distinct from the archived gated study. No historical weights
-or results were changed when C became the default.
+Training fits only the head on DTLD training data. Checkpoint selection uses
+held-out validation mAP; test and transfer predictions do not fit the epoch,
+thresholds, or temperature. Historical selection protocols are documented in
+the [archive](docs/experiments/README.md).
 
 ## Recorded results
 
-These are the existing **single fold-0, epoch-5 EMA** results at raw temperature
-**T=1**. C trained on 21,493 DTLD images and used 7,032 images from Dortmund,
-Kassel, and Fulda for validation. Its selected validation mAP is **69.37%**.
+The retained **single fold-0, epoch-7 EMA** predictor uses raw temperature **T=1**.
+It trained on 21,493 DTLD images, with 7,032 held-city validation images from
+Dortmund, Kassel, and Fulda. Selected validation mAP is **70.13%**.
 
-| Dataset | Images | mAP | Balanced accuracy | Accuracy | Macro F1 | RR recall | RG recall | NoR recall |
-|:--|--:|--:|--:|--:|--:|--:|--:|--:|
-| DTLD official test | 12,453 | 70.11 | 68.76 | 88.76 | 70.04 | 86.07 | 94.69 | 25.52 |
-| ATLAS manual transfer benchmark | 528 | 86.84 | 76.12 | 74.62 | 71.97 | 85.71 | 90.53 | 52.13 |
-| VZC-TLD published test | 598 | 72.17 | 65.54 | 75.42 | 66.18 | 85.80 | 77.84 | 32.97 |
+| Dataset | Images | mAP | Balanced accuracy | Accuracy | Macro F1 | RR recall | RG recall | Mean signal recall | NoR recall |
+|:--|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| DTLD official test | 12,453 | 72.80 | 71.56 | 90.00 | 72.97 | 87.24 | 95.63 | 91.44 | 31.81 |
+| ATLAS manual transfer benchmark | 528 | 90.25 | 82.93 | 81.82 | 80.53 | 83.27 | 89.47 | 86.37 | 76.06 |
+| VZC-TLD published test | 598 | 79.46 | 70.22 | 77.76 | 71.53 | 86.71 | 76.70 | 81.71 | 47.25 |
 
-All displayed scores are percentages. Full-precision metrics, per-class AP,
-precision/recall/F1, confusion matrices, slices, sensitivity analyses, and hashes
-are in [docs/results/](docs/results/README.md). The archived pre-pilot latency
-measurement on an RTX 5070 is **40.89 ms at batch 1** and **152.47 ms per batch
-of 4**, including JPEG preprocessing, transfers, forward pass, and CPU
-probabilities; see [efficiency.json](docs/results/efficiency.json).
+Scores are percentages. [Full results](docs/results/README.md) include exact
+metrics, class precision/recall, confusion matrices, slices, and provenance.
+Matched RTX 5070 inference timing is **62.03 ms at batch 1** and **247.68 ms
+per batch of 4**, including JPEG decoding, letterboxing, transfers, model,
+softmax, and CPU probabilities. The complete head contains **412,830 parameters**.
 
-C is the chosen architecture for further development and paper presentation.
-The comparisons show a tradeoff: stronger signal recall and transfer ranking
-coexist with reduced NoR recall. C does not lead every metric, and all A–D pilots
-failed the original validation gates. ATLAS and VZC influenced development and
-architecture choice, so transfer scores are exploratory. Only fold 0 has been
-completed for C; no four-fold C result, full-training-split refit, confidence
-interval, or independent confirmatory architecture evaluation is claimed.
+These measurements cover one city fold and one training seed. ATLAS uses manual
+relevance labels; ATLAS and VZC informed development and therefore measure
+exploratory transfer. No independent confirmatory architecture comparison,
+full-training-split refit, or repeated-seed result is claimed. NoR recall remains
+a material limitation. The [ViT-S+ comparison](docs/experiments/backbone_capacity/results/README.md)
+and [rejected RGB study](docs/experiments/recall_head/results/README.md) report
+all observed tradeoffs, including external regressions.
 
 ## Repository layout
 
 ```text
-configs/                Canonical C settings and execution-only loader settings
+configs/                ViT-B default, ViT-S+ reference, execution-only loader settings
 src/dinov3_global/       Frozen encoder, shared head, pooling, data, losses, engine
 scripts/                Preparation, training, inference, evaluation, result exports
 tests/                  CPU regression tests; no encoder download required
 metadata/               Dataset membership, labels, checkpoint hashes, verification
 docs/assets/            Architecture figure
-docs/results/           Published C measurements and provenance
+docs/results/           Retained ViT-B measurements and provenance
 docs/experiments/       Historical architectures, configurations, histories, results
 datasets/               Local licensed data; excluded from Git
 runs/                   Local weights, predictions, logs, and archived raw results
 ```
 
-Previous executable implementations and experiment runners are removed from
-the current tree. Their original source remains recoverable from Git commit
-`54a28b4`; [the archive index](docs/experiments/README.md) explains the records.
+Only the shared evidence head is supported by the current package. Historical
+implementations and their executable snapshots are indexed in the research
+archive and do not enter normal training or inference.
 
 ## Installation and data
 
@@ -264,9 +268,15 @@ python -m pip install -e ".[dev,preprocessing]"
 The tested environment is recorded in [metadata/environment.json](metadata/environment.json).
 Access to DINOv3 weights requires accepting the model's license and authenticating
 with `hf auth login`, or setting `backbone.local_ckpt` to a licensed local snapshot.
-Weights and dataset images are excluded from Git. The C checkpoint is available
-locally at `runs/pretrained/experiment_c_fold0.pt`; this repository does not
-currently publish a checkpoint download.
+Weights and dataset images are excluded from Git. The retained ViT-B checkpoint
+is available locally at `runs/pretrained/dinoglobal_vitb_fold0.pt`; the reference
+ViT-S+ checkpoint remains at `runs/pretrained/experiment_c_fold0.pt`. Their
+identities are recorded in [metadata/checkpoints.json](metadata/checkpoints.json).
+This repository does not currently publish a checkpoint download.
+
+For an offline run, set `backbone.local_ckpt` in a copied configuration to the
+licensed local encoder snapshot. Canonical configurations use the pinned Hugging
+Face revisions and contain no machine-specific paths.
 
 Obtain DTLD and place annotations under `datasets/DTLD/v2.0/`. Decode native
 Bayer TIFFs to full-resolution RGB JPEGs:
@@ -281,14 +291,15 @@ manual ATLAS annotations, and VZC-TLD audits.
 
 ## Training and reproduction
 
-Train C with a session-disjoint validation partition inside official DTLD train:
+Train the default ViT-B model with a session-disjoint validation partition inside official DTLD train:
 
 ```sh
 python scripts/train.py --out runs/train
+python scripts/train.py --config configs/vitsplus.yaml --out runs/train_vitsplus
 python scripts/train.py --out runs/train --resume runs/train/last.pt
 ```
 
-To reproduce C's fold-0 membership and train a fresh head under the current
+To reproduce the retained fold-0 membership and train a fresh head under the current
 selection protocol, audit the frozen city folds and run fold 0:
 
 ```sh
@@ -297,7 +308,7 @@ python scripts/cross_validate.py --fold-manifest metadata/dtld_city_folds.json -
 ```
 
 Omit `--fold-indices 0` to train all four folds with seeds 0–3. These additional
-C runs are future measurements. Add `--resume` to continue an existing run.
+runs are future measurements. Add `--resume` to continue an existing run.
 `best.pt` stores the selected head/EMA; `last.pt` also stores optimizer, scaler,
 and RNG state. Old pilot histories retain their original configurations and
 source hashes and should not be resumed with the revised protocol.
@@ -307,17 +318,17 @@ source hashes and should not be resumed with the revised protocol.
 Use the retained checkpoint, or replace its path with a new run's `best.pt`:
 
 ```sh
-python scripts/infer.py --ckpt runs/pretrained/experiment_c_fold0.pt --images path/to/images --out runs/inference --overlays
-python scripts/evaluate.py --ckpt runs/pretrained/experiment_c_fold0.pt --runtime-loader configs/runtime.json --out runs/evaluations/dtld_test
-python scripts/evaluate_ood.py --labels metadata/atlas_labels.json --images datasets/atlas_relevance_expanded --ckpt runs/pretrained/experiment_c_fold0.pt --include-uncertain --out runs/evaluations/atlas
+python scripts/infer.py --ckpt runs/pretrained/dinoglobal_vitb_fold0.pt --images path/to/images --out runs/inference --overlays
+python scripts/evaluate.py --ckpt runs/pretrained/dinoglobal_vitb_fold0.pt --runtime-loader configs/runtime.json --out runs/evaluations/dtld_test
+python scripts/evaluate_ood.py --labels metadata/atlas_labels.json --images datasets/atlas_relevance_expanded --ckpt runs/pretrained/dinoglobal_vitb_fold0.pt --include-uncertain --out runs/evaluations/atlas
 python scripts/download_vzc.py
-python scripts/evaluate_vzc.py --ckpt runs/pretrained/experiment_c_fold0.pt --out runs/evaluations/vzc
+python scripts/evaluate_vzc.py --ckpt runs/pretrained/dinoglobal_vitb_fold0.pt --out runs/evaluations/vzc
 python scripts/summarize_results.py --dtld-test runs/evaluations/dtld_test --out runs/result_exports
 ```
 
 Primary evaluation uses raw logits at T=1. Optional DTLD `--calibrated` uses a
 previously fitted validation temperature. Multiple compatible `--ckpt` arguments
-evaluate individual heads and their mean-logit ensemble; the reported C results
+evaluate individual heads and their mean-logit ensemble; the reported ViT-B results
 above use one head. The DTLD evaluator freezes checkpoint/data/source hashes,
 audits complete official membership and train/test overlap, and verifies shared
 encoder inference against complete forwards. See [docs/evaluation.md](docs/evaluation.md).
@@ -332,8 +343,10 @@ ruff format --check src scripts tests
 
 With licensed local data and a CUDA device, `python scripts/smoke.py` verifies
 two-view training, EMA checkpoint loading, and exact epoch-boundary resume.
-[Cleanup verification](metadata/refactor_verification.json) records bitwise
-agreement with C predictions and gradients captured before this refactor.
+[Cleanup verification](metadata/publication_cleanup.json) records agreement of
+both retained predictors and head gradients before and after removing the
+experimental code. The original [C refactor audit](metadata/refactor_verification.json)
+remains available as a historical record.
 
 Code is released under [AGPL-3.0](LICENSE). Backbone and dataset licenses govern
 their respective assets. DTLD parser helpers retain their upstream attribution.

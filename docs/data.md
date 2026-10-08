@@ -16,7 +16,7 @@ datasets/
 ```
 
 `scripts/preprocessing/convert_dtld.py` decodes Bayer TIFFs to full-resolution RGB
-JPEGs through the attributed DTLD parser. No side-cropped dump is required for C.
+JPEGs through the attributed DTLD parser. No side-cropped image dump is required.
 Both `crop_sides` and `label_crop_sides` are zero in the default configuration.
 
 ### Full-frame coordinates and masks

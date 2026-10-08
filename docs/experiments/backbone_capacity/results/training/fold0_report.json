@@ -1,0 +1,133 @@
+{
+  "architecture": "dinoglobal_mil",
+  "val_cities": [
+    "Dortmund",
+    "Kassel",
+    "Fulda"
+  ],
+  "metrics": {
+    "AP_RR": 0.9313032914557721,
+    "AP_RG": 0.9618098194944139,
+    "AP_NoR": 0.2108456093845201,
+    "mAP": 0.701319573444902,
+    "acc_bal": 0.7151595038012345,
+    "n": 7032,
+    "n_classes": 3,
+    "cm_RR_RR": 2036,
+    "cm_RG_RG": 4143,
+    "cm_NoR_NoR": 98,
+    "temperature": 1.0,
+    "ece": 0.07164812104828859,
+    "accuracy": 0.8926336746302617,
+    "macro_F1": 0.7116283417800572,
+    "weighted_F1": 0.8938230906299891,
+    "nll": 0.36199112934565986,
+    "brier": 0.172303694056627
+  },
+  "slices": {
+    "city": {
+      "Dortmund": {
+        "AP_RR": 0.9523228954215543,
+        "AP_RG": 0.9710240370123857,
+        "AP_NoR": 0.14015923607187997,
+        "mAP": 0.6878353895019401,
+        "acc_bal": 0.6923496054156243,
+        "n": 4897,
+        "n_classes": 3,
+        "cm_RR_RR": 1410,
+        "cm_RG_RG": 3045,
+        "cm_NoR_NoR": 28
+      },
+      "Fulda": {
+        "AP_RR": 0.8385080972438521,
+        "AP_RG": 0.9477891012402834,
+        "AP_NoR": 0.3506395615601961,
+        "mAP": 0.7123122533481107,
+        "acc_bal": 0.6567589156874871,
+        "n": 536,
+        "n_classes": 3,
+        "cm_RR_RR": 182,
+        "cm_RG_RG": 240,
+        "cm_NoR_NoR": 12
+      },
+      "Kassel": {
+        "AP_RR": 0.9097210238091092,
+        "AP_RG": 0.9256336655416133,
+        "AP_NoR": 0.2574651788510115,
+        "mAP": 0.6976066227339114,
+        "acc_bal": 0.7381594698488718,
+        "n": 1599,
+        "n_classes": 3,
+        "cm_RR_RR": 444,
+        "cm_RG_RG": 858,
+        "cm_NoR_NoR": 58
+      }
+    },
+    "size": {
+      "small(<16px)": {
+        "AP_RR": 0.9063697720640994,
+        "AP_RG": 0.9145895158386916,
+        "AP_NoR": 0.08702210622276726,
+        "mAP": 0.6359937980418527,
+        "acc_bal": 0.6117493370356435,
+        "n": 892,
+        "n_classes": 3,
+        "cm_RR_RR": 257,
+        "cm_RG_RG": 428,
+        "cm_NoR_NoR": 10
+      },
+      "mid(16-48px)": {
+        "AP_RR": 0.939018075398403,
+        "AP_RG": 0.9670821929784411,
+        "AP_NoR": 0.3174801739638022,
+        "mAP": 0.7411934807802155,
+        "acc_bal": 0.7423502948680442,
+        "n": 4330,
+        "n_classes": 3,
+        "cm_RR_RR": 1253,
+        "cm_RG_RG": 2612,
+        "cm_NoR_NoR": 64
+      },
+      "large(>=48px)": {
+        "AP_RR": 0.9201045000945463,
+        "AP_RG": 0.9611070993262159,
+        "AP_NoR": 0.2362416579519525,
+        "mAP": 0.7058177524575715,
+        "acc_bal": 0.7145927352089688,
+        "n": 1810,
+        "n_classes": 3,
+        "cm_RR_RR": 526,
+        "cm_RG_RG": 1103,
+        "cm_NoR_NoR": 24
+      }
+    }
+  },
+  "best_epoch": 7,
+  "checkpoint_role": "highest validation mAP EMA",
+  "seed": 0,
+  "audit": {
+    "fold": 0,
+    "val_cities": [
+      "Dortmund",
+      "Kassel",
+      "Fulda"
+    ],
+    "n_train": 21493,
+    "n_val": 7032,
+    "train_hist": [
+      7278,
+      13146,
+      1069
+    ],
+    "val_hist": [
+      2292,
+      4437,
+      303
+    ],
+    "n_train_sequences": 1107,
+    "n_val_sequences": 371,
+    "session_overlap": 0,
+    "val_pseudo_nor": 104,
+    "val_membership_sha256": "b176f1e0ed99295aa04ded3b41b81abda6ab0ba4f859131b7c88f1f546cc70d6"
+  }
+}

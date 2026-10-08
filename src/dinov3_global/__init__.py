@@ -1,4 +1,4 @@
-"""Frozen DINOv3 with a scene-conditioned, token-level MIL classifier."""
+"""Attribute-supervised traffic-light relevance classification with frozen DINOv3."""
 
 from .model import DinoGlobal
 

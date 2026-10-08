@@ -1,9 +1,16 @@
 # Experiment history
 
-Experiment C became the default on **7 October 2026** at the user's direction.
-Only its architecture is implemented in the current source tree. This archive
-preserves what was tried, how checkpoints were selected, and what each achieved.
-Original source is available at Git commit `54a28b4` (before this cleanup).
+The active method is the original shared evidence MIL head with frozen **ViT-B/16**
+as the default and **ViT-S+/16** as an explicit reference. ViT-B became the
+retained default on 8 October 2026 after the RGB recall pilot failed its gates.
+This index preserves historical architectures, configurations, results and decisions.
+Original pre-refactor source remains available at Git commit `54a28b4`.
+
+- [Frozen ViT-B capacity comparison](backbone_capacity/results/README.md): the retained epoch-7 predictor and matched ViT-S+ results.
+- [RGB recall pilot](recall_head/results/README.md) and [external diagnostic](recall_head/results/external_epoch2/README.md): rejected variants, including all regressions.
+- [Experimental source snapshot](recall_head/source_snapshot.zip) and [hash manifest](recall_head/source_snapshot_manifest.json): final experimental implementation before publication cleanup. Pilot controllers/configurations inside the snapshot are historical entry points.
+- [Original ViT-S+ release](vitsplus_reference/README.md): byte-preserved reports, checkpoint identity and environment.
+- [LoRA feasibility analysis](lora_feasibility.md): historical design analysis; no LoRA implementation or trained result.
 
 ## Architectural progression
 
@@ -16,7 +23,7 @@ refer to trainable heads, supervision, and preprocessing.
 | Axial (v6) | v5 plus two shared row/column attention blocks affecting relevance only. | 720×1280 | 1,380,739 | One 12-epoch fold-0 pilot |
 | A | v5 head with full-frame letterboxing, content-relative geometry, independent attribute conflict masks, and clean training probe. | 720×1280 | 489,475 | One 12-epoch fold-0 pilot |
 | B | A plus natural sampling, no logit adjustment, inverse-sqrt image-class weights, per-instance attribute losses, and full-frame zoom-out. | 720×1280 | 489,475 | One 12-epoch fold-0 pilot |
-| **C (default)** | B training with one shared appearance/attribute trunk, 10-class pictogram supervision, width-64 base relevance and bounded context correction; positive signal readout and decreasing NoR logit. | 720×1280 | **265,374** | One 12-epoch fold-0 pilot |
+| **C (ViT-S+ reference)** | B training with one shared appearance/attribute trunk, 10-class pictogram supervision, width-64 base relevance and bounded context correction; positive signal readout and decreasing NoR logit. | 720×1280 | **265,374** | One 12-epoch fold-0 pilot |
 | D | C with higher input resolution and a 56×100 patch grid. | 896×1600 | 265,374 | One 12-epoch fold-0 pilot |
 
 For v5, each branch has its own attribute maps and relevance predictor. C shares

@@ -1,16 +1,16 @@
-"""Frozen DINOv3 ViT-S+/16 and the shared attribute-evidence MIL head."""
+"""Frozen DINOv3 encoder and the shared attribute-evidence MIL head."""
 
 from __future__ import annotations
 import torch
 from torch import nn
-from .backbone import DinoV3Backbone
+from .backbone import BACKBONE_ID, DinoV3Backbone
 from .head import EvidenceMILHead
 
 
 class DinoGlobal(nn.Module):
     def __init__(
         self,
-        hf_id="facebook/dinov3-vits16plus-pretrain-lvd1689m",
+        hf_id=BACKBONE_ID,
         attn_implementation="sdpa",
         dtype="float16",
         local_ckpt=None,
@@ -21,9 +21,9 @@ class DinoGlobal(nn.Module):
     ):
         super().__init__()
         if mid_layer != 6:
-            raise ValueError("Experiment C fuses layer 6 and the final layer")
+            raise ValueError("DinoGlobal-MIL fuses layer 6 and the final layer")
         if head_kind != "v7_evidence":
-            raise ValueError("Only the Experiment C evidence head is supported")
+            raise ValueError("Only the DinoGlobal-MIL evidence head is supported")
         self.backbone = DinoV3Backbone(
             hf_id, attn_implementation, dtype, local_ckpt, grid_hw=grid_hw, mid_layer=mid_layer
         )

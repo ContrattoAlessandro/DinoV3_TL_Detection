@@ -1,4 +1,4 @@
-"""Train the default Experiment C architecture on session-disjoint DTLD training data."""
+"""Train the default DinoGlobal-MIL architecture on session-disjoint DTLD training data."""
 
 import argparse
 import os

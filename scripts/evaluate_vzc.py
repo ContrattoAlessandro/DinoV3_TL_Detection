@@ -26,7 +26,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "src"))
 from dinov3_global.data import global_label_from_states
-from dinov3_global.backbone import BACKBONE_ID, BACKBONE_REVISION
+from dinov3_global.backbone import backbone_spec
 from dinov3_global.dtld import STATES
 from dinov3_global.engine import load_model
 from dinov3_global.config import architecture_name
@@ -147,6 +147,19 @@ def build_labels(root, manifest):
                 n_annotations=len(annotations),
                 n_relevant=int(relevance.sum()),
                 max_lamp_h=max((a["bbox"][3] for a in annotations), default=0),
+                target_lamp_h=(
+                    -1
+                    if label == 2
+                    else max(
+                        (
+                            a["bbox"][3]
+                            for a in annotations
+                            if a["category_id"] in ((6, 7) if label == 0 else (5,) if label == 1 else ())
+                        ),
+                        default=-1,
+                    )
+                    * min(720 / image["height"], 1280 / image["width"])
+                ),
             )
             split_entries.append(entry)
             hash_groups[image_hash].append(dict(file=key, split=split, label=int(label)))
@@ -175,7 +188,13 @@ def build_labels(root, manifest):
 
 def metrics(entries, logits, temperature=1.0):
     y = np.array([e["label"] for e in entries])
-    result = report(y, logits, T=temperature, max_lamp_h=np.array([e["max_lamp_h"] for e in entries]))
+    result = report(
+        y,
+        logits,
+        T=temperature,
+        max_lamp_h=np.array([e["max_lamp_h"] for e in entries]),
+        target_lamp_h=np.array([e.get("target_lamp_h", -1) for e in entries]),
+    )
     probabilities = softmax_np(np.asarray(logits, dtype=float) / temperature)
     pred = probabilities.argmax(1)
     result["metrics"].update(
@@ -399,19 +418,21 @@ def main():
     if any(backbone != configurations[0] for backbone in configurations[1:]):
         raise ValueError("All evaluation checkpoints must use the same frozen backbone settings")
     local = configurations[0].get("local_ckpt")
+    spec = backbone_spec(configurations[0]["hf_id"])
     snapshot = (REPO / local).resolve() if local else None
     for filename in ("config.json", "model.safetensors"):
         if snapshot is not None:
             path = str(snapshot / filename)
         else:
-            path = try_to_load_from_cache(BACKBONE_ID, filename, revision=BACKBONE_REVISION)
+            path = try_to_load_from_cache(spec["hf_id"], filename, revision=spec["revision"])
             if not isinstance(path, str):
-                path = hf_hub_download(BACKBONE_ID, filename, revision=BACKBONE_REVISION)
+                path = hf_hub_download(spec["hf_id"], filename, revision=spec["revision"])
         backbone_files[filename] = dict(path=path, sha256=sha256(path))
     plan = dict(
         dataset=manifest["repo_id"],
         revision=manifest["revision"],
         jobs=jobs,
+        backbone=spec,
         backbone_files=backbone_files,
         dataset_manifest_sha256=sha256(args.manifest),
         labels_sha256=sha256(label_path),

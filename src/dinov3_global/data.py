@@ -337,6 +337,14 @@ class DTLDGlobalDataset(Dataset):
                 if f is not None and len(f.boxes)
                 else 0.0
             )
+        if f is not None:
+            signal = (f.relevance > 0) & ((f.state == 0) if it["y"] == 1 else np.isin(f.state, (2, 3, 5)))
+            if it["y"] == 2:
+                signal[:] = False
+            scale = transform.resized_hw[0] / SRC_H if transform is not None else self.target_hw[0] / SRC_H
+            result["target_lamp_h"] = torch.tensor(
+                float((f.boxes[signal, 3] - f.boxes[signal, 1]).max() * scale) if signal.any() else -1.0
+            )
         return result
 
 
@@ -368,6 +376,7 @@ def collate_global(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
         "rel_instance_weight",
         "dir_instance_weight",
         "pictogram_instance_weight",
+        "target_lamp_h",
     ):
         if key in batch[0]:
             result[key] = torch.stack([b[key] for b in batch])

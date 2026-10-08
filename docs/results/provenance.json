@@ -1,9 +1,10 @@
 {
   "checkpoint": {
-    "name": "experiment_c_fold0",
-    "checkpoint": "runs/pretrained/experiment_c_fold0.pt",
-    "checkpoint_sha256": "7be4e19ae4ac03a1422983a15aa561f4d2f91a324be8e0e055dad56536c985da",
-    "epoch": 5,
+    "name": "vitb_fold0",
+    "checkpoint": "runs/pretrained/dinoglobal_vitb_fold0.pt",
+    "checkpoint_sha256": "edb2bb7bfd4a40cf470cd62f1dbd14e25b14d9c8feb107207be03922c528042e",
+    "backbone": "facebook/dinov3-vitb16-pretrain-lvd1689m",
+    "epoch": 7,
     "seed": 0,
     "train_images": 21493,
     "validation_images": 7032,
@@ -12,17 +13,16 @@
       "Kassel",
       "Fulda"
     ],
-    "validation_mAP": 0.6937446754351165
+    "validation_mAP": 0.701319573444902,
+    "status": "retained default"
   },
-  "source_commit": "54a28b4",
-  "original_plan": "docs/experiments/diagnostics/plan.json",
-  "original_plan_sha256": "fbc89e8c8b4ccd06ba401b52304f30a3bc40bc1f153ef5e67367eb7045859088",
+  "source_results": "docs/experiments/backbone_capacity/results/full_report.json",
+  "source_results_sha256": "bbf09e19553c1072873213d6890aeea5d1acf8ece93a268e489f7c7337fe2a0c",
   "report_sha256": {
-    "DTLD": "f394531b9b2bcf18cf609f15cf1779ffe6bed545f96e9e99ca6eb598d9f8b6d1",
-    "ATLAS": "9685599526a3e4995740e94e5d44bab03545549dad40fe1037bc476ebac0a9db",
-    "VZC_TLD": "d0c79ceeb9c7fd17542364d5c90875e0023a753ad803c1833adfaaaae8f0c4c5"
+    "dtld": "915f5d6ab03159c643b372e7957d53c6b71fedc11a09ada36b2e6ef30fd95ee9",
+    "atlas": "50014ed274d61b77f849c4b483ab6a145b5752d78d9825e93a426f2025353613",
+    "vzc_tld": "c13583ceedc436a86c1896fcc1d479bc68b9b7b77558b2abefadd7b28227cc9b"
   },
   "primary_temperature": 1.0,
-  "selection": "Highest fold-0 validation mAP; originally best_unconstrained.pt",
-  "scope": "Existing single fold-0 C diagnostic measurements; default changed, weights and scores unchanged"
+  "scope": "Single fold-0 epoch-7 EMA; existing benchmark scores, unchanged by publication cleanup; exploratory transfer. ViT-S+ release preserved under docs/experiments/vitsplus_reference/results."
 }

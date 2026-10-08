@@ -110,7 +110,7 @@ def _lr_of(ep: int, warmup: int, epochs: int, base: float) -> float:
 def _make_sampler(ds: DTLDGlobalDataset, mode: str) -> Optional[WeightedRandomSampler]:
     """Sample with replacement using per-example weight frequency**(-p).
 
-    The default C protocol disables replacement sampling (mode="none").
+    The default protocol disables replacement sampling (mode="none").
     Optional power sampling assigns class mass proportional to frequency**(1-p).
     """
     if mode in (None, "none", ""):
@@ -197,9 +197,9 @@ def build_test_loader(cfg: dict, repo_root: str = "."):
 
 @torch.no_grad()
 def predict_split(model: DinoGlobal, loader: DataLoader, device: torch.device):
-    """Returns (ys, logits, meta) with meta = dict(cities, max_lamp_h, paths)."""
+    """Return labels, logits, and city, lamp-size, and image-identity metadata."""
     model.eval()
-    ys, lgs, cities, sizes, paths = [], [], [], [], []
+    ys, lgs, cities, sizes, paths, target_sizes = [], [], [], [], [], []
     for batch in loader:
         img = batch["image"].to(device, non_blocking=True).float().div_(255.0)
         with torch.autocast("cuda", enabled=device.type == "cuda"):
@@ -208,11 +208,19 @@ def predict_split(model: DinoGlobal, loader: DataLoader, device: torch.device):
         lgs.append(out["logits"].float().cpu().numpy())
         cities.extend(batch["city"])
         sizes.append(batch["max_lamp_h"].numpy())
+        target_sizes.append(
+            batch.get("target_lamp_h", torch.full((len(batch["label"]),), float("nan"))).numpy()
+        )
         paths.extend(batch["path"])
     return (
         np.concatenate(ys),
         np.concatenate(lgs),
-        {"cities": cities, "max_lamp_h": np.concatenate(sizes), "paths": paths},
+        {
+            "cities": cities,
+            "max_lamp_h": np.concatenate(sizes),
+            "target_lamp_h": np.concatenate(target_sizes),
+            "paths": paths,
+        },
     )
 
 
@@ -221,7 +229,7 @@ def _to_device(batch: dict, dev: torch.device) -> torch.Tensor:
 
 
 def load_model(ckpt_path, repo_root, dev):
-    """Load an Experiment C checkpoint strictly; use EMA weights for inference."""
+    """Load an DinoGlobal-MIL checkpoint strictly; use EMA weights for inference."""
     state = torch.load(ckpt_path, map_location=dev, weights_only=True)
     cfg = state["cfg"]
     validate_config(cfg)
@@ -512,7 +520,7 @@ def fit(
     best_map, best_state = best_init, None
     selection_metric = o.get("early_stop_metric", "mAP")
     if selection_metric != "mAP":
-        raise ValueError("New Experiment C runs select checkpoints by validation mAP")
+        raise ValueError("New DinoGlobal-MIL runs select checkpoints by validation mAP")
     probe_loader = clean_probe_loader(tl, int(o.get("clean_probe_size", 0)), int(o.get("seed", 0)), out_dir)
     if dev.type == "cuda":
         torch.backends.cudnn.benchmark = True
@@ -667,7 +675,9 @@ def fit(
             py, pl, pm = predict_split(model, probe_loader, dev)
             probe_report = report(py, pl, cities=pm["cities"])
         model.head.load_state_dict(live)
-        rep = report(ys, lgs, cities=meta["cities"], max_lamp_h=meta["max_lamp_h"])
+        rep = report(
+            ys, lgs, cities=meta["cities"], max_lamp_h=meta["max_lamp_h"], target_lamp_h=meta["target_lamp_h"]
+        )
         met = rep["metrics"]
         # slice mAP is only comparable to overall mAP when the slice contains
         # all 3 classes (mAP averages over the classes present in the slice,
@@ -727,9 +737,9 @@ def fit(
             "ema": copy.deepcopy(ema.state_dict()),
             "cfg": cfg,
             "epoch": ep + 1,
-            "metrics": met,
-            "report": rep,
-            "report_calibrated": rep_cal,
+            "metrics": to_jsonable(met),
+            "report": to_jsonable(rep),
+            "report_calibrated": to_jsonable(rep_cal),
             "log_pi": log_pi.tolist(),
             "best_score": best_map,
             "selection_metric": selection_metric,
@@ -776,7 +786,6 @@ def fit(
             break
 
     print(
-        f"best val {selection_metric}={best_map:.4f} (test untouched; run scripts/evaluate.py "
-        f"after fixing the final training protocol)"
+        f"Selected validation EMA {selection_metric}={best_map:.4f}; checkpoint: {os.path.join(out_dir, 'best.pt')}"
     )
     return best_state

@@ -1,4 +1,4 @@
-"""Predict RR/RG/NoR from a folder of images using a saved Experiment C checkpoint."""
+"""Predict RR/RG/NoR from a folder of images using a saved DinoGlobal-MIL checkpoint."""
 
 import argparse
 from collections import Counter

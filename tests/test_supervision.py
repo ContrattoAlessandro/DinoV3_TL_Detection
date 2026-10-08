@@ -195,3 +195,32 @@ def test_conflicts_and_erasure_remove_attribute_gradients():
         w_pictogram=0.1,
     )
     assert erased["state"] == erased["dir"] == erased["pictogram"] == 0
+
+
+def test_target_size_uses_relevant_compatible_lamp_in_mixed_state_scene(tmp_path):
+    (tmp_path / "train").mkdir()
+    Image.new("RGB", (2048, 1024)).save(tmp_path / "train/frame.jpg")
+    frame = FrameSample(
+        "./City/route/session/frame.tiff",
+        np.array([[100, 100, 104, 112], [500, 500, 600, 700]], np.float32),
+        np.array([1, 1]),
+        np.array([1, 1]),
+        np.array([2, 0]),
+        np.array([5, 5]),
+        ["a", "b"],
+    )
+    item = dict(
+        entry=dict(image_path=frame.image_path),
+        frame=frame,
+        y=0,
+        weight=1.0,
+        city="City",
+        n_lamps=2,
+        max_lamp_h=200.0,
+    )
+    ds = DTLDGlobalDataset("unused", str(tmp_path), "train", items=[item])
+    sample = ds[0]
+    assert sample["max_lamp_h"].item() == 125.0
+    assert sample["target_lamp_h"].item() == 7.5
+    item["y"] = 2
+    assert ds[0]["target_lamp_h"].item() == -1.0

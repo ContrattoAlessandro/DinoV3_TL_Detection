@@ -1,0 +1,38 @@
+{
+  "exported_at_utc": "2026-10-07T16:38:39.110926+00:00",
+  "source_sha256": {
+    "runs/backbone_vitb_fold0/status.json": "3943bb29ae3ecfec4e9e8cb6e4930ccbb297427b6c6b04c760ba1b4f3ade0f59",
+    "runs/backbone_vitb_fold0/training/fold0/best.pt": "edb2bb7bfd4a40cf470cd62f1dbd14e25b14d9c8feb107207be03922c528042e",
+    "runs/backbone_vitb_fold0/comparison.json": "68384d0df6b814e19e5379108e8669a1a5e40c89f1fdc1259953b22303ec4793",
+    "runs/backbone_vitb_fold0/latency.json": "0e2ab97948adab6b059ea31e3e897c6d0d034f0ba484abdfdc02756fea959ab1",
+    "runs/backbone_vitb_fold0/plan.json": "bec0649dde7b09a309acea40ca6b3cfac7bea8d4adbc69942520f8bdb1dc6c4b",
+    "runs/backbone_vitb_fold0/recovery_plan.json": "73ce301e951930bce46b926723db6fc456e3ac549d9c4cc7c5cd88e76e0c3f87",
+    "runs/backbone_vitb_fold0/evaluations/evaluate_dtld_1/report.json": "915f5d6ab03159c643b372e7957d53c6b71fedc11a09ada36b2e6ef30fd95ee9",
+    "runs/backbone_vitb_fold0/evaluations/evaluate_dtld_1/predictions.npz": "d4bd79df4b2cf0a80593953f166f1e8f78f06cc6e0f0534f55c62352938c301d",
+    "runs/backbone_vitb_fold0/evaluations/evaluate_atlas_1/report.json": "97accac5e10535bfd20b897f7ff59aed38ac19b7ec0202f8b2bb824bf72784e0",
+    "runs/backbone_vitb_fold0/evaluations/evaluate_atlas_1/predictions.csv": "876866a123009ae6bcada51e2dfbfd724e0f4b8f9b0228d4eac19750d59e1152",
+    "runs/backbone_vitb_fold0/evaluations/evaluate_vzc_tld_1/vitb_fold0/report.json": "b5c34a74a9522eacc5a4143b55d293fb4f5621c23248637553073807a614e778",
+    "runs/backbone_vitb_fold0/evaluations/evaluate_vzc_tld_1/vitb_fold0/predictions.npz": "8a4ace55d95ffbfec4d233ff968a29800c7e7a2628ae0614a773032b0bd068dd"
+  },
+  "export_script_sha256": "deaf263a9f0dd5c52f28dc043f99c5204cf11b79cbba1690a4e63850ba92db51",
+  "export_sha256": {
+    "comparison.csv": "40067b828727f91c68cf6598cab0285432bc633167de4ec03fb1e722e95e6020",
+    "comparison.json": "68384d0df6b814e19e5379108e8669a1a5e40c89f1fdc1259953b22303ec4793",
+    "confusion_matrices.csv": "612865a859fd48390425f0670d7da65e91e4cb772a3a46c5e4b03dacff9c3f36",
+    "full_report.json": "bbf09e19553c1072873213d6890aeea5d1acf8ece93a268e489f7c7337fe2a0c",
+    "latency.json": "0e2ab97948adab6b059ea31e3e897c6d0d034f0ba484abdfdc02756fea959ab1",
+    "metrics.csv": "4dc58cacd58f99bd0dcb28bd6e3f6ff2a53098eba70ab0e4e15d888d05f38029",
+    "per_class_metrics.csv": "47deec3185626dccc2ac68553f538ff5d77bfa8f93a6b8a57812579eaa7d1995",
+    "plan.json": "bec0649dde7b09a309acea40ca6b3cfac7bea8d4adbc69942520f8bdb1dc6c4b",
+    "README.md": "0705b87b84389a2aafb476685d052f51c31671e547421b8b13d4ce0ee8df7242",
+    "recovery_plan.json": "73ce301e951930bce46b926723db6fc456e3ac549d9c4cc7c5cd88e76e0c3f87",
+    "slices.csv": "a71562b5da760047439cefccde29021b5fa71acde474134aac0f2a12791dc1da",
+    "training_history.csv": "a92f5a6d37b02e4d848be39505d317178d67b7cdbfd911ed3e8aa0a6f15257e7",
+    "training/effective_config.json": "3fa47eb499b0a636f1f766d0050b8f744733c84e63be7fc1ad03527422a58744",
+    "training/fold0_report.json": "28d042dc8641119d304e66f851be4a7f79afad6956781d5b3b0fc88b912831b3",
+    "training/fold_manifest.json": "9a31559e937b6f7a83bb12f2f3d06b0e3b056f852ad226788a44543f3221e78b",
+    "training/history.jsonl": "3d3208d77fbc5b9eb2b45e205770519db88428dc0747c582cae8b186bbeb538a",
+    "training/source_manifest.json": "8d80046b7d8389fbadc3fd61bf06a1b43eef65aa06327c440c0dfdd40c230c81"
+  },
+  "tests_passed": 94
+}
