@@ -231,7 +231,12 @@ def _to_device(batch: dict, dev: torch.device) -> torch.Tensor:
 def load_model(ckpt_path, repo_root, dev):
     """Load an DinoGlobal-MIL checkpoint strictly; use EMA weights for inference."""
     state = torch.load(ckpt_path, map_location=dev, weights_only=True)
-    cfg = state["cfg"]
+    cfg = copy.deepcopy(state["cfg"])
+    local = cfg["backbone"].get("local_ckpt")
+    # Saved repository-relative caches are optional on a fresh clone. Resolve
+    # the same pinned Hugging Face model when that local snapshot is absent.
+    if local and not os.path.isabs(local) and not os.path.isdir(os.path.join(repo_root, local)):
+        cfg["backbone"]["local_ckpt"] = None
     validate_config(cfg)
     model = _build_model(cfg, dev, repo_root)
     model.head.load_state_dict(state["ema"] if "ema" in state else state["head"], strict=True)

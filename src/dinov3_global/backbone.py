@@ -14,11 +14,6 @@ BACKBONE_ID = "facebook/dinov3-vitb16-pretrain-lvd1689m"
 BACKBONE_REVISION = "5931719e67bbdb9737e363e781fb0c67687896bc"
 BACKBONE_SPECS = {
     BACKBONE_ID: {"revision": BACKBONE_REVISION, "dim": 768, "patch": 16},
-    "facebook/dinov3-vits16plus-pretrain-lvd1689m": {
-        "revision": "c93d816fc9e567563bc068f01475bec89cc634a6",
-        "dim": 384,
-        "patch": 16,
-    },
 }
 
 

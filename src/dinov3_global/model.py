@@ -40,6 +40,10 @@ class DinoGlobal(nn.Module):
     def forward(self, images, content_mask=None, geometry=None):
         with torch.no_grad():
             features = self.backbone(images)
+        return self.forward_features(features, content_mask=content_mask, geometry=geometry)
+
+    def forward_features(self, features, content_mask=None, geometry=None):
+        """Apply the head to shared frozen features using the normal forward contract."""
         metadata = {
             k: v for k, v in dict(content_mask=content_mask, geometry=geometry).items() if v is not None
         }

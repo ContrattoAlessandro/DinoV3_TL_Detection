@@ -14,7 +14,7 @@ def inverse_softplus(value):
 class EvidenceMILHead(nn.Module):
     def __init__(
         self,
-        in_dim=768,
+        in_dim=1536,
         proj_dim=192,
         dropout=0.2,
         topk=(1, 2, 4),
@@ -26,6 +26,8 @@ class EvidenceMILHead(nn.Module):
         super().__init__()
         if not 0 <= context_dropout < 1 or context_bound <= 0:
             raise ValueError("Invalid relevance context settings")
+        if type(proj_dim) is not int or proj_dim < 1 or not 0 <= dropout < 1:
+            raise ValueError("Invalid head width/dropout")
         self.grid_hw, self.topk = tuple(grid_hw), tuple(topk)
         if not topk or any(type(k) is not int or k < 1 for k in topk):
             raise ValueError("Pooling scales must be positive integers")
@@ -74,7 +76,8 @@ class EvidenceMILHead(nn.Module):
         z = self.trunk(h)
         lamp_logit, state_logit = self.lamp(z).squeeze(-1), self.state(z)
         dir_logit, pictogram_logit = self.dir(z), self.pictogram(z)
-        appearance = torch.cat([z, dir_logit.softmax(-1), pictogram_logit.softmax(-1)], -1)
+        direction, pictogram = dir_logit.softmax(-1), pictogram_logit.softmax(-1)
+        appearance = torch.cat([z, direction, pictogram], -1)
         geo = self.geo.unsqueeze(0).expand(batch, -1, -1) if geometry is None else geometry
         inputs = torch.cat([geo, scene.unsqueeze(1).expand(-1, count, -1)], -1)
         if self.training and self.context_dropout:

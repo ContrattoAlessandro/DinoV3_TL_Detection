@@ -1,4 +1,4 @@
-"""Contracts for the public Experiment C package, frozen backbone, and metric reports."""
+"""Contracts for the released package, frozen backbone, and metric reports."""
 
 from copy import deepcopy
 from pathlib import Path
@@ -96,15 +96,10 @@ def test_backbone_discards_registers_and_stays_frozen_during_training(monkeypatc
     assert {id(p) for p in model.head_parameters()} == {id(p) for p in model.parameters() if p.requires_grad}
 
 
-def test_backbone_configs_change_only_encoder():
+def test_release_uses_only_the_frozen_vitb_backbone():
     default = load_config(ROOT / "configs/default.yaml")
-    reference = load_config(ROOT / "configs/vitsplus.yaml")
     assert default["backbone"]["dim"] == 768
-    assert reference["backbone"]["dim"] == 384
-    for section in default.keys() - {"backbone"}:
-        assert reference[section] == default[section]
-    for key in default["backbone"].keys() - {"hf_id", "dim", "local_ckpt"}:
-        assert reference["backbone"][key] == default["backbone"][key]
+    assert list(BACKBONE_SPECS) == [default["backbone"]["hf_id"]]
 
 
 def test_removed_experimental_supervision_is_rejected():

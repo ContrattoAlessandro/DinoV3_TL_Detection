@@ -1,31 +1,31 @@
 # Contributing
 
-The supported architecture is the shared evidence MIL head in
-`src/dinov3_global/head.py`, with frozen ViT-B/16 and `configs/default.yaml`
-as the canonical protocol. `configs/vitsplus.yaml` retains the supported ViT-S+
-reference; both configurations share the same head, losses and preprocessing.
-Keep changes to image transforms consistent across training, inference, and
-attribute target generation. Changing class/state/attribute order is a checkpoint
-format change and must be documented.
+The released architecture is the shared evidence MIL head with frozen
+DINOv3 ViT-B/16. `configs/default.yaml` is the canonical training protocol.
 
-Install development dependencies with `python -m pip install -e ".[dev]"`.
-Before submitting changes, run:
+Keep image transforms consistent across training, inference, and target
+generation. Class/state/attribute order and state-dict keys form part of the
+checkpoint contract. A format change requires explicit documentation and a
+loading migration.
+
+Install development dependencies and run the checks before submitting changes:
 
 ```sh
+python -m pip install -e ".[dev]"
 python -m pytest
 ruff check src scripts tests
 ruff format --check src scripts tests
 ```
 
-CPU tests use synthetic data and mock encoder weights. For a licensed local
-CUDA setup, `python scripts/smoke.py` verifies two-view training and exact resume.
+CPU tests use synthetic data and mock encoders. With licensed local data and
+CUDA, `python scripts/smoke.py` checks full-resolution training and exact resume.
 
-Use a fresh output directory for a new experiment. Record the source revision,
-effective configuration, split membership, checkpoint selection, and weight
-hashes. Report single heads separately from ensembles. Preserve failed selection
-decisions and uncertainty; never overwrite historical measurements to match a
-new development choice.
+Use a fresh output directory for each run. Record configuration, source identity,
+membership, checkpoint selection, and weight hashes. Test and transfer scores
+must not fit thresholds, calibration, or epochs. Keep new measurements separate
+from the published records in `docs/results/`.
 
-Research records in `docs/experiments/` are frozen. Add a clearly identified new
-record for future experiments rather than changing old results. Dataset pixels,
-checkpoints, access tokens, and generated run directories must stay out of Git.
+Dataset pixels, encoder weights, access tokens, environment folders, and generated
+runs stay out of Git. The only bundled weight file is the small head checkpoint
+declared in `metadata/checkpoints.json`. Preserve upstream parser attribution
+and the repository license.

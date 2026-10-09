@@ -1,6 +1,0 @@
-{
-  "promote": false,
-  "retain": "v5",
-  "reason": "No pilot meets the validation and latency gates",
-  "external_evaluation": "not performed; no eligible complete candidate"
-}

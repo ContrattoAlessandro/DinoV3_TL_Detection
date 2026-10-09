@@ -6,8 +6,10 @@
 *.pt binary
 *.safetensors binary
 
-# Keep the pre-inference protocol byte-identical to its recorded SHA-256.
-docs/experiments/v5/results/dtld_test_protocol.json -text
-# Historical evidence keeps its original execution bytes and recorded hashes.
-docs/experiments/** -text whitespace=cr-at-eol
-docs/results/**/report.json -text whitespace=cr-at-eol
+# Preserve result/provenance bytes so published hashes survive checkout.
+docs/results/**/*.json -text
+docs/results/**/*.npz binary
+docs/results/**/*.csv -text
+docs/reproduction/*.json -text
+docs/reproduction/*.jsonl -text
+metadata/publication_verification.json -text

@@ -2124,5 +2124,6 @@
   "labels_sha256": "4edb911b3b537d04c615c2d3dcf923f6da69621bf184e10336f6bdde6700cee4",
   "predictions_sha256": "8a4ace55d95ffbfec4d233ff968a29800c7e7a2628ae0614a773032b0bd068dd",
   "temperature_from_DTLD": 0.7527607083320618,
-  "completed_at": "2026-10-07T16:37:08.395026+00:00"
+  "completed_at": "2026-10-07T16:37:08.395026+00:00",
+  "checkpoint": "checkpoints/dinoglobal_vitb_fold0.pt"
 }

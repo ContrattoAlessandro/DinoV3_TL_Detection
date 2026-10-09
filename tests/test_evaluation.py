@@ -119,13 +119,13 @@ def test_flattened_image_aliases_are_rejected(tmp_path):
 class TinyEncoder(nn.Module):
     def __init__(self):
         super().__init__()
-        self.config = SimpleNamespace(hidden_size=384)
+        self.config = SimpleNamespace(hidden_size=768)
         self.parameter = nn.Parameter(torch.zeros(1))
         self.calls = 0
 
     def forward(self, pixel_values, output_hidden_states):
         self.calls += 1
-        features = pixel_values.mean(dim=(1, 2, 3)).reshape(-1, 1, 1).expand(-1, 11, 384)
+        features = pixel_values.mean(dim=(1, 2, 3)).reshape(-1, 1, 1).expand(-1, 11, 768)
         return SimpleNamespace(
             last_hidden_state=features + 12, hidden_states=tuple(features + i for i in range(13))
         )
@@ -137,7 +137,7 @@ def test_shared_encoder_is_bitwise_equal_to_complete_forwards_and_preserves_orde
     encoder = TinyEncoder()
     monkeypatch.setattr(AutoModel, "from_pretrained", lambda *args, **kwargs: encoder)
     model = DinoGlobal(
-        hf_id="facebook/dinov3-vits16plus-pretrain-lvd1689m",
+        hf_id="facebook/dinov3-vitb16-pretrain-lvd1689m",
         dtype="float32",
         grid_hw=(2, 3),
         proj_dim=8,

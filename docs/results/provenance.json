@@ -1,7 +1,7 @@
 {
   "checkpoint": {
     "name": "vitb_fold0",
-    "checkpoint": "runs/pretrained/dinoglobal_vitb_fold0.pt",
+    "checkpoint": "checkpoints/dinoglobal_vitb_fold0.pt",
     "checkpoint_sha256": "edb2bb7bfd4a40cf470cd62f1dbd14e25b14d9c8feb107207be03922c528042e",
     "backbone": "facebook/dinov3-vitb16-pretrain-lvd1689m",
     "epoch": 7,
@@ -16,13 +16,37 @@
     "validation_mAP": 0.701319573444902,
     "status": "retained default"
   },
-  "source_results": "docs/experiments/backbone_capacity/results/full_report.json",
-  "source_results_sha256": "bbf09e19553c1072873213d6890aeea5d1acf8ece93a268e489f7c7337fe2a0c",
-  "report_sha256": {
+  "primary_temperature": 1.0,
+  "scope": "Single fold-0 seed-0 epoch-7 EMA. Original metric values preserved; paths normalized for publication. Transfer benchmarks are exploratory.",
+  "original_report_sha256": {
     "dtld": "915f5d6ab03159c643b372e7957d53c6b71fedc11a09ada36b2e6ef30fd95ee9",
     "atlas": "50014ed274d61b77f849c4b483ab6a145b5752d78d9825e93a426f2025353613",
     "vzc_tld": "c13583ceedc436a86c1896fcc1d479bc68b9b7b77558b2abefadd7b28227cc9b"
   },
-  "primary_temperature": 1.0,
-  "scope": "Single fold-0 epoch-7 EMA; existing benchmark scores, unchanged by publication cleanup; exploratory transfer. ViT-S+ release preserved under docs/experiments/vitsplus_reference/results."
+  "measurement_sha256": {
+    "dtld": "4fa3e1abdc1bfeff50fdf42b5fe2991b9f188d22bcfc01eb39d1fa4a3f8d0690",
+    "atlas": "3833e457b56357ba93e54938a131dae45e7905709e98718881df0f15b24772e8",
+    "vzc_tld": "57a213562acac6ca4d7c24408b11260d9ccda68de23cb7a0ad70c5694083d2d1"
+  },
+  "files_sha256": {
+    "docs/results/atlas/predictions.csv": "ec9fd24451a3d10b4f925a3427f5cabd8a4e1e904aff6d8e30af5cf0fb87a128",
+    "docs/results/atlas/report.json": "4b5847b6b87cb4ad0c6e7e010b27356917bca66c04de81ca717cfc09075d8211",
+    "docs/results/confusion_matrices.csv": "828811b6a94fbf368355e8109abdc181438efb1fe5ae3512c01910ba16c02fda",
+    "docs/results/dtld/data_audit.json": "792c70aa01c15f6a7c2452aa2e3a9dc3325e34c2170b478d812d7a32a3dc5afb",
+    "docs/results/dtld/membership.csv": "856614854f39ebe8802af670e9501594c93ef14d8bb3462a5c2f630d68ddf830",
+    "docs/results/dtld/predictions.npz": "d4bd79df4b2cf0a80593953f166f1e8f78f06cc6e0f0534f55c62352938c301d",
+    "docs/results/dtld/report.json": "400b628e6e256dfcda2e69e65ffd592514987bfadbd0fadc2fa15a0861172a52",
+    "docs/results/efficiency.json": "3f6df82eecdf85b1160f32e73070625a7ebf70188da345cda35f7794cb2d858a",
+    "docs/results/metrics.csv": "4245c46165f6c537b69fe2e1c96c626c36085f6b694fe65a271286879817419f",
+    "docs/results/per_class_metrics.csv": "2ddaf312c411ff275a70756e0b09d25ddcaabb394fcee19f2ffbc24c0b17a0e9",
+    "docs/results/vzc_tld/labels_snapshot.json": "ac0e5b711b36b9d99613a7df05fb55399f7291cbc8c164cd4972ed88b8da64d5",
+    "docs/results/vzc_tld/predictions.csv": "cf4f53ed53e362e1215b7eb2568b0dd6fddcad516229c87691aa5a65ab3a7b30",
+    "docs/results/vzc_tld/predictions.npz": "8a4ace55d95ffbfec4d233ff968a29800c7e7a2628ae0614a773032b0bd068dd",
+    "docs/results/vzc_tld/report.json": "476a71532451a7e19b348ec9945d55cc0bf231f437c5f42f2185eceb59fe2e64"
+  },
+  "reproduction_sha256": {
+    "docs/reproduction/configuration.json": "67bf4bac5698f629599f95822a29816d1c4df269dfb05ce89ff77fb47704b5d2",
+    "docs/reproduction/fold0_report.json": "72b32ce6f4fc65a97739deefea5ee7f8ccb46b58c5ba1df7bb1086c1000bab89",
+    "docs/reproduction/history.jsonl": "b08c1a0f49fa51d90b49d5a97bd1b8f74b23d49b6d1db563b920f7b360c070a7"
+  }
 }

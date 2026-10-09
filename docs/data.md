@@ -69,7 +69,8 @@ occur. The audited RGB train/test dumps have zero shared image identities, share
 sessions, or exact JPEG duplicates. The audit covers 1,478 training sessions and
 632 test sessions, with no exact duplicates within either split. Annotation and
 ordered membership SHA-256 hashes are recorded in the
-[frozen diagnostic plan](experiments/diagnostics/plan.json). The audit hashes the
+[published data audit](results/dtld/data_audit.json) and
+[test membership](results/dtld/membership.csv). The audit hashes the
 prepared JPEG bytes, rather than asserting equivalence of every possible
 conversion of the native TIFFs.
 Session groups are the native `city/route/timestamp` folders parsed by `_seq_of`.

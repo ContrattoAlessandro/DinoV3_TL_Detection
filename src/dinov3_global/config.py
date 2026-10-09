@@ -12,13 +12,13 @@ def architecture_name(cfg):
 
 def validate_config(cfg):
     decoder, backbone, data = cfg["decoder"], cfg["backbone"], cfg["data"]
-    # Keep C's serialized identifier so the original EMA checkpoint loads strictly.
+    # Preserve the released checkpoint's serialized head identifier.
     if decoder.get("head") != "v7_evidence":
         raise ValueError("Only the DinoGlobal-MIL evidence head is supported")
     for key, expected in dict(pool="local", relevance_context=True).items():
         if decoder.get(key) != expected:
             raise ValueError(f"DinoGlobal-MIL requires decoder.{key}={expected!r}")
-    # Original C checkpoints contain fixed, unused configuration fields from v5.
+    # The released checkpoint contains these fixed compatibility fields.
     for key, expected in dict(
         nor_sees_evidence=True, dir_head=True, cls_modulates_evidence=False, positional_mode="none"
     ).items():
@@ -26,6 +26,10 @@ def validate_config(cfg):
             raise ValueError(f"Incompatible decoder.{key}")
     if decoder.get("spatial_context", {}).get("mode", "none") != "none":
         raise ValueError("DinoGlobal-MIL does not use an additional spatial module")
+    if any(
+        key in decoder for key in ("context_source", "detach_relevance_attributes")
+    ) or "supervise_attributes_view2" in cfg.get("loss", {}):
+        raise ValueError("Only the released context and attribute-supervision paths are supported")
     if backbone.get("mid_layer") != 6 or backbone.get("frozen") is not True:
         raise ValueError("A frozen backbone with layer-6/final fusion is required")
     spec = backbone_spec(backbone.get("hf_id"))

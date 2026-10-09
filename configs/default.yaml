@@ -1,5 +1,5 @@
 # DinoGlobal-MIL with frozen ViT-B/16: canonical architecture and training settings.
-# Fresh runs select EMA checkpoints by validation mAP; historical selection is archived.
+# EMA checkpoint selection uses highest held-city validation mAP at T=1.
 data:
   label_dir: datasets/DTLD/v2.0
   img_root: datasets/DTLD_jpg

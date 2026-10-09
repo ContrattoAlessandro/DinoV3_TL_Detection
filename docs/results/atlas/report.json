@@ -167,9 +167,9 @@
     "Do not train/tune on this set and call it unseen-data evaluation.",
     "DTLD calibration is not guaranteed to transfer to OOD images."
   ],
-  "labels_file": "C:\\Users\\alexa\\Desktop\\traffic-light-detection\\metadata\\atlas_labels.json",
+  "labels_file": "metadata/atlas_labels.json",
   "source": [
-    "C:\\Users\\alexa\\Desktop\\traffic-light-detection\\runs\\backbone_vitb_fold0\\training\\fold0\\best.pt"
+    "checkpoints/dinoglobal_vitb_fold0.pt"
   ],
   "crop_sides": 0,
   "metric_input": "raw logits T=1"

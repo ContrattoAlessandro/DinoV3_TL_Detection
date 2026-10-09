@@ -326,7 +326,7 @@
   "checkpoints": [
     {
       "name": "member0",
-      "checkpoint": "runs/backbone_vitb_fold0/training/fold0/best.pt",
+      "checkpoint": "checkpoints/dinoglobal_vitb_fold0.pt",
       "checkpoint_sha256": "edb2bb7bfd4a40cf470cd62f1dbd14e25b14d9c8feb107207be03922c528042e",
       "epoch": 7,
       "seed": 0,

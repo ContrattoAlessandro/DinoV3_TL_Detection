@@ -3,13 +3,14 @@
 The retained DinoGlobal-MIL predictor is one fold-0 **epoch-7 EMA** head,
 with **412,830 trainable parameters** and a frozen DINOv3 ViT-B/16 encoder.
 Checkpoint SHA-256: `edb2bb7bfd4a40cf470cd62f1dbd14e25b14d9c8feb107207be03922c528042e`.
-The canonical local path is `runs/pretrained/dinoglobal_vitb_fold0.pt`.
+The canonical local path is `checkpoints/dinoglobal_vitb_fold0.pt`.
 
 Training used 21,493 DTLD frames and 7,032 held-city validation frames from
 Dortmund, Kassel and Fulda. Highest validation EMA mAP selected epoch 7:
 **70.13195734%**. Test and transfer data did not fit weights or select the epoch.
-These are the original measured scores; publication cleanup did not rerun,
-recalibrate, or modify them. Dataset identities and label policies are frozen.
+These are the original measured scores. Metric values and raw predictions are
+preserved; file locations are normalized for publication. Dataset identities
+and label policies are frozen.
 
 ## Primary metrics
 
@@ -41,7 +42,7 @@ AP, precision, recall, and F1 are percentages.
 
 Precision, recall, F1, and ECE are percentages. NLL and Brier use their natural scales; lower is better for ECE/NLL/Brier.
 
-| Dataset | Macro precision | Macro recall | Weighted precision | Weighted recall | Weighted F1 | Mean RR/RG recall | ECE ↓ | NLL ↓ | Brier ↓ |
+| Dataset | Macro precision | Macro recall | Weighted precision | Weighted recall | Weighted F1 | Mean RR/RG recall | ECE â†“ | NLL â†“ | Brier â†“ |
 |:--|--:|--:|--:|--:|--:|--:|--:|--:|--:|
 | DTLD | 74.87 | 71.56 | 89.51 | 90.00 | 89.69 | 91.44 | 7.55 | 0.3578 | 0.1718 |
 | ATLAS | 79.51 | 82.93 | 83.29 | 81.82 | 82.10 | 86.37 | 19.77 | 0.6731 | 0.3748 |
@@ -70,7 +71,7 @@ City and size slices are available for DTLD; camera slices for ATLAS; size slice
 | Dataset | Group | Slice | Images | Present classes | mAP | Balanced accuracy |
 |:--|:--|:--|--:|--:|--:|--:|
 | DTLD | city | Berlin | 1,077 | 3 | 78.07 | 74.10 |
-| DTLD | city | Bochum | 109 | 2 | — | 89.63 |
+| DTLD | city | Bochum | 109 | 2 | â€” | 89.63 |
 | DTLD | city | Bremen | 222 | 3 | 90.28 | 76.36 |
 | DTLD | city | Dortmund | 2,027 | 3 | 72.07 | 70.92 |
 | DTLD | city | Duesseldorf | 1,389 | 3 | 71.53 | 72.13 |
@@ -110,7 +111,6 @@ RTX 5070; 30 timed iterations after 5 warm-ups; the same 16 JPEGs used in the ea
 
 | Backbone | Batch-1 median (ms) | Batch-1 p95 (ms) | Batch-1 FPS | Batch-4 median (ms) | Batch-4 FPS |
 |:--|--:|--:|--:|--:|--:|
-| ViT-S+ | 42.03 | 43.25 | 23.79 | 173.85 | 23.01 |
 | ViT-B | 62.03 | 63.57 | 16.12 | 247.68 | 16.15 |
 
 ## Reproducibility and claim scope
@@ -122,14 +122,17 @@ so transfer results are exploratory. Low NoR recall remains a limitation.
 No full-training-split refit, repeated-seed uncertainty, or independent
 confirmatory comparison is claimed.
 
-Reports below are unchanged copies of the corresponding entries in the
-[original ViT-B result bundle](../experiments/backbone_capacity/results/full_report.json).
-[Provenance](provenance.json) records their hashes. The
-[original ViT-S+ release](../experiments/vitsplus_reference/results/README.md)
-and [rejected RGB study](../experiments/recall_head/results/README.md) are separate
-research records.
+Reports and full-precision predictions below describe only the released model.
+[Provenance](provenance.json) records artifact hashes, original report hashes,
+and numerical measurement identities. Code cleanup is checked separately in
+[publication verification](../../metadata/publication_verification.json).
 
-[Metrics](metrics.csv) · [Class metrics](per_class_metrics.csv) ·
-[Confusion matrices](confusion_matrices.csv) · [Timing samples](efficiency.json) ·
-[DTLD report](dtld/report.json) · [ATLAS report](atlas/report.json) ·
+[DTLD raw predictions](dtld/predictions.npz) ·
+[DTLD membership](dtld/membership.csv) ·
+[ATLAS raw predictions](atlas/predictions.csv) ·
+[VZC raw predictions](vzc_tld/predictions.npz)
+
+[Metrics](metrics.csv) Â· [Class metrics](per_class_metrics.csv) Â·
+[Confusion matrices](confusion_matrices.csv) Â· [Timing samples](efficiency.json) Â·
+[DTLD report](dtld/report.json) Â· [ATLAS report](atlas/report.json) Â·
 [VZC report](vzc_tld/report.json)

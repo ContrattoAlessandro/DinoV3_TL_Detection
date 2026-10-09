@@ -4,15 +4,24 @@
   "annotation_sha256": "959a67ec0d843886d286cd4c7e8513dc8435357d60726231d52c1ba9c873d9b5",
   "data": {
     "label_dir": "datasets/DTLD/v2.0",
-    "img_root": "datasets/DTLD_1280",
+    "img_root": "datasets/DTLD_jpg",
     "crop_sides": 0,
-    "label_crop_sides": 114,
+    "label_crop_sides": 0,
     "target_hw": [
       720,
       1280
     ],
+    "global_classes": [
+      "RR",
+      "RG",
+      "NoR"
+    ],
+    "val_frac": 0.15,
+    "val_seed": 0,
     "label_policy": "map_to_nor",
-    "policy_weight": 1.0
+    "policy_weight": 1.0,
+    "sampler": "none",
+    "preprocessing": "letterbox"
   },
   "items_sha256": "8cc6955fe8b727cae306e1d15aa402061de755ea0cd73ec8ef3f819815df3987",
   "n_items": 28525,

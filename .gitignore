@@ -25,3 +25,4 @@ dist/
 *.pth
 *.safetensors
 *.engine
+!/checkpoints/dinoglobal_vitb_fold0.pt

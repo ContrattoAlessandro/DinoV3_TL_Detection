@@ -1,4 +1,4 @@
-"""Export audited DTLD result tables from one or more fixed C checkpoints."""
+"""Export audited DTLD result tables from fixed DinoGlobal-MIL checkpoints."""
 
 import argparse
 import csv
@@ -98,7 +98,7 @@ def export_test(directory, out):
                 model=name,
                 epoch=checkpoint["epoch"],
                 seed=checkpoint["seed"],
-                head_parameters=checkpoint.get("head_parameters", 265374),
+                head_parameters=checkpoint.get("head_parameters", 412830),
                 **result["metrics"],
             )
         )
@@ -122,7 +122,7 @@ def export_test(directory, out):
             model=primary,
             n_heads=len(logits),
             head_parameters=sum(
-                checkpoint.get("head_parameters", 265374) for checkpoint in plan["checkpoints"]
+                checkpoint.get("head_parameters", 412830) for checkpoint in plan["checkpoints"]
             ),
             **result["metrics"],
         )

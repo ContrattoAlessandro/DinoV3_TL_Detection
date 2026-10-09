@@ -6,7 +6,7 @@
   "checkpoints": [
     {
       "name": "vitb_fold0",
-      "checkpoint": "runs/pretrained/dinoglobal_vitb_fold0.pt",
+      "checkpoint": "checkpoints/dinoglobal_vitb_fold0.pt",
       "checkpoint_sha256": "edb2bb7bfd4a40cf470cd62f1dbd14e25b14d9c8feb107207be03922c528042e",
       "backbone": "facebook/dinov3-vitb16-pretrain-lvd1689m",
       "epoch": 7,
@@ -20,33 +20,11 @@
       ],
       "validation_mAP": 0.701319573444902,
       "status": "retained default"
-    },
-    {
-      "name": "vitsplus_fold0",
-      "checkpoint": "runs/pretrained/experiment_c_fold0.pt",
-      "checkpoint_sha256": "7be4e19ae4ac03a1422983a15aa561f4d2f91a324be8e0e055dad56536c985da",
-      "epoch": 5,
-      "seed": 0,
-      "train_images": 21493,
-      "validation_images": 7032,
-      "validation_cities": [
-        "Dortmund",
-        "Kassel",
-        "Fulda"
-      ],
-      "validation_mAP": 0.6937446754351165,
-      "backbone": "facebook/dinov3-vits16plus-pretrain-lvd1689m",
-      "status": "supported reference"
     }
   ],
   "checkpoint_selection": "Highest fold-0 DTLD city-validation mAP at raw T=1; earlier epoch wins ties",
-  "default_choice": {
-    "date": "2026-10-08",
-    "basis": "User retained the original ViT-B after rejection of the RGB/evidence-supervision pilot"
-  },
   "full_training_split_refit": false,
   "four_fold_evaluation_completed": false,
   "results": "docs/results/README.md",
-  "history": "docs/experiments/README.md",
-  "checkpoint_distribution": "Local only; no public checkpoint download is published"
+  "checkpoint_distribution": "Head-only checkpoint included in checkpoints/; licensed frozen backbone is acquired separately"
 }

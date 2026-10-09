@@ -392,7 +392,7 @@ def main():
     if args.batch < 1:
         raise ValueError("Batch size must be positive")
     args.out.mkdir(parents=True, exist_ok=True)
-    checkpoints = args.ckpt or [REPO / "runs/pretrained/experiment_c_fold0.pt"]
+    checkpoints = args.ckpt or [REPO / "checkpoints/dinoglobal_vitb_fold0.pt"]
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
     if not manifest.get("image_integrity_verified"):
         raise ValueError("Download manifest must verify image integrity")

@@ -1,0 +1,73 @@
+{
+  "checkpoint": "checkpoints/dinoglobal_vitb_fold0.pt",
+  "checkpoint_sha256": "edb2bb7bfd4a40cf470cd62f1dbd14e25b14d9c8feb107207be03922c528042e",
+  "checkpoint_bytes_unchanged": true,
+  "full_resolution": [
+    720,
+    1280
+  ],
+  "real_images": 2,
+  "logits_bit_exact": true,
+  "all_evidence_maps_bit_exact": true,
+  "head_gradients_bit_exact": true,
+  "backbone_frozen": true,
+  "backbone_safetensors_sha256": "9a21ac3df0c63839d62612dda6f454d816c25611cc7a52966ed5a5a94921dc8b",
+  "relevant_dataset_inputs_unchanged": true,
+  "source_sha256": {
+    "src/dinov3_global/__init__.py": "0bf85282d6b1fbc29dc94f7135a9429744e2a8a315d6e032698d8872c2083492",
+    "src/dinov3_global/augment.py": "b1a3399cce559e5a0ab8bdf5133e60dd9026cfd1291f2791c4e3a24820579025",
+    "src/dinov3_global/backbone.py": "699423f470ec77ad80a19e77216b1a690714b16fb62936e7bba13e684b3ff366",
+    "src/dinov3_global/comparison.py": "eb8f762f85747c7872def2282cb14b1c322fc6f4979caa5a92d728b2e513ae59",
+    "src/dinov3_global/config.py": "5d6ff20c0d9d944eaec45fd7e7b0d90a3bd1e536ddbd44071617e74b8b510b0f",
+    "src/dinov3_global/data.py": "ba33945d4937f14fd5107326f9bcbb93dc9d159e135923c796d1ba1b9caf15a5",
+    "src/dinov3_global/dtld.py": "170ecff471571ae9fb98c51bd05a3441dd075e7f452e9d43d99d06b7c8eeb8fa",
+    "src/dinov3_global/engine.py": "5545884c9424360e5b228aeb07157555d8e06dc3de7965668fec732080ec3b49",
+    "src/dinov3_global/evaluation.py": "2a581e8db0e2d4836890be122454d53076d2c8f55bc230f668ea8d3a4c049062",
+    "src/dinov3_global/head.py": "07625aa49bece44905276b42d727ff29050adfd42bd7e690513b2d9172f09f2e",
+    "src/dinov3_global/inference.py": "1225951c6c5c7d6623a036038fbaee607950b7fe6b121deff9d54fa010f725ea",
+    "src/dinov3_global/losses.py": "9284bb03883c86d7aaeb10ffd9b8a2e9853af0e0e31fcd4a2a6de9c73fa265e7",
+    "src/dinov3_global/metrics.py": "959097ff4525a428173c19406c0ab3b4937caac25c2d7aa3f032475b5a9c5f36",
+    "src/dinov3_global/model.py": "b73f92359d828656ac3f0911d20e03dbb6ca5e8939bd4a0ef4fe69a92a493954",
+    "src/dinov3_global/pooling.py": "e7812a5c062fdf409c38cfec23159fdc2e28b13e3e578934d88ba35e74c9cd7d",
+    "src/dinov3_global/preprocessing.py": "a66c399d49c1a5fd7845cfac324b0788ca8cd63d45eeb00ba0ccf3233bd697b0",
+    "src/dinov3_global/runtime.py": "30d2dae0e8b780429c43164b0c25e610bc1536614abe42ded694c1f139190210",
+    "src/dinov3_global/validation.py": "35f2df1ed2db34cb6c740dc29a50f5e0ae9418bd9a3b91abcd88bfc120545c00"
+  },
+  "cpu_tests_passed": 101,
+  "ruff_lint_passed": true,
+  "ruff_format_passed": true,
+  "documentation_missing_links": 0,
+  "package_wheel_build_passed": true,
+  "package_experimental_modules_absent": true,
+  "city_membership_audit_passed": true,
+  "cuda_smoke": {
+    "status": "complete",
+    "real_frozen_backbone": true,
+    "backbone": {
+      "hf_id": "facebook/dinov3-vitb16-pretrain-lvd1689m",
+      "local_ckpt": "runs/backbones/dinov3_vitb16",
+      "dim": 768,
+      "patch": 16,
+      "frozen": true,
+      "use_cls": true,
+      "attn_implementation": "sdpa",
+      "dtype": "float16",
+      "mid_layer": 6
+    },
+    "target_hw": [
+      720,
+      1280
+    ],
+    "batch": 4,
+    "training_images": 4,
+    "validation_images": 4,
+    "city_disjoint": true,
+    "epochs": 2,
+    "both_training_views": true,
+    "optimizer_and_ema_finite": true,
+    "checkpoint_safe_load": true,
+    "resumed_head_and_ema_bit_exact": true,
+    "peak_gpu_allocated_bytes": 1072929280,
+    "elapsed_seconds": 21.42200000002049
+  }
+}
